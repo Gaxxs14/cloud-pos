@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import api from '../services/api';
 
 export default function LoginPage() {
@@ -109,6 +110,13 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
+          ¿Quieres registrar una nueva empresa independiente?{' '}
+          <Link href="/register" className="font-bold text-indigo-600 hover:underline">
+            Registrar Mi Tienda
+          </Link>
+        </div>
       </div>
     </div>
   );
