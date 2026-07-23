@@ -54,7 +54,7 @@ export class TransfersService {
         }
 
         // 3. Validar existencia y stock en almacén de origen
-        const sourceStock = await tx.productStock.findUnique({
+        let sourceStock = await tx.productStock.findUnique({
           where: {
             productId_warehouseId: {
               productId: item.productId,
@@ -63,10 +63,32 @@ export class TransfersService {
           },
         });
 
-        const currentStock = sourceStock ? Number(sourceStock.stock) : 0;
+        const prod = await tx.product.findUnique({ where: { id: item.productId } });
+
+        if (!sourceStock) {
+          sourceStock = await tx.productStock.create({
+            data: {
+              productId: item.productId,
+              warehouseId: dto.fromWarehouseId,
+              stock: prod?.stock ?? 0,
+            },
+          });
+        } else if (Number(sourceStock.stock) === 0 && (prod?.stock ?? 0) > 0) {
+          sourceStock = await tx.productStock.update({
+            where: {
+              productId_warehouseId: {
+                productId: item.productId,
+                warehouseId: dto.fromWarehouseId,
+              },
+            },
+            data: {
+              stock: prod?.stock ?? 0,
+            },
+          });
+        }
+
+        const currentStock = Number(sourceStock.stock);
         if (currentStock < item.quantity) {
-          // Obtener nombre del producto para dar un mensaje de error claro
-          const prod = await tx.product.findUnique({ where: { id: item.productId } });
           throw new BadRequestException(
             `Stock insuficiente del producto "${prod?.name || 'Desconocido'}" en la bodega de origen. Disponible: ${currentStock}, Solicitado: ${item.quantity}`,
           );
