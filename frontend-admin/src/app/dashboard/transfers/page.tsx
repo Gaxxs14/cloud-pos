@@ -49,6 +49,20 @@ export default function TransfersPage() {
     loadData();
   }, []);
 
+  const handleOpenCreateModal = () => {
+    if (warehouses.length > 0) {
+      const firstWh = warehouses[0].id;
+      setFromWarehouseId(firstWh);
+      const secondWh = warehouses.find((w) => w.id !== firstWh)?.id || '';
+      setToWarehouseId(secondWh);
+    } else {
+      setFromWarehouseId('');
+      setToWarehouseId('');
+    }
+    setTransferItems([{ productId: '', quantity: 1 }]);
+    setIsModalOpen(true);
+  };
+
   const handleAddRow = () => {
     setTransferItems([...transferItems, { productId: '', quantity: 1 }]);
   };
@@ -136,7 +150,7 @@ export default function TransfersPage() {
           <p className="text-slate-400 text-xs">Mueve stock entre diferentes bodegas de forma segura y auditada.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           className="px-4 py-2 bg-indigo-600 text-white font-semibold text-xs rounded-xl hover:bg-indigo-700 transition shadow-sm flex items-center gap-1.5"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
