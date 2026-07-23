@@ -5,6 +5,7 @@ import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shift_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/barcode_scanner_dialog.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -27,7 +28,6 @@ class _PosScreenState extends State<PosScreen> {
 
   List<dynamic> _branches = [];
   List<dynamic> _warehouses = [];
-  bool _loadingBranches = false;
   String? _tempBranchId;
   String? _tempWarehouseId;
 
@@ -188,7 +188,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                 ),
               );
-            };
+            }
 
             return Dialog(
               backgroundColor: Colors.white,
@@ -1375,6 +1375,50 @@ class _PosScreenState extends State<PosScreen> {
                             margin: const EdgeInsets.all(15),
                           ),
                         );
+                      }
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: IconButton(
+                  tooltip: 'Escanear Código de Barras con Cámara',
+                  icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF10B981)),
+                  onPressed: () async {
+                    final code = await Navigator.of(context).push<String>(
+                      MaterialPageRoute(builder: (_) => const BarcodeScannerDialog()),
+                    );
+                    if (code != null && code.isNotEmpty) {
+                      final product = cartProvider.products.cast<Map<String, dynamic>?>().firstWhere(
+                        (p) {
+                          if (p == null) return false;
+                          final barcode = p['skuBarcode']?.toString().trim() ?? '';
+                          final sku = p['sku']?.toString().trim() ?? '';
+                          return barcode == code.trim() || sku == code.trim();
+                        },
+                        orElse: () => null,
+                      );
+                      if (product != null) {
+                        cartProvider.addToCart(product);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('⚡ Producto agregado: ${product['name']}'),
+                              backgroundColor: const Color(0xFF10B981),
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      } else {
+                        setState(() {
+                          _searchController.text = code;
+                          _searchQuery = code;
+                        });
                       }
                     }
                   },
