@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
-import { TransfersService, CreateTransferDto } from './transfers.service';
+import { TransfersService } from './transfers.service';
+import { CreateTransferDto } from './dto/create-transfer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';

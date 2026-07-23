@@ -2,20 +2,17 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { TransferStatus, InventoryLogReason } from '@prisma/client';
 
-export class CreateTransferDto {
-  fromWarehouseId: string;
-  toWarehouseId: string;
-  items: {
-    productId: string;
-    quantity: number;
-  }[];
-}
+import { CreateTransferDto } from './dto/create-transfer.dto';
 
 @Injectable()
 export class TransfersService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateTransferDto, tenantId: string, userId: string) {
+    console.log('[DEBUG_TRANSFERS] Received DTO:', JSON.stringify(dto), 'tenantId:', tenantId);
+    if (!dto.fromWarehouseId || !dto.toWarehouseId) {
+      throw new BadRequestException('Debes seleccionar un almacén de origen y un almacén de destino válidos.');
+    }
     if (dto.fromWarehouseId === dto.toWarehouseId) {
       throw new BadRequestException('El almacén de origen y destino no pueden ser iguales.');
     }
@@ -73,7 +70,7 @@ export class TransfersService {
               stock: prod?.stock ?? 0,
             },
           });
-        } else if (Number(sourceStock.stock) === 0 && (prod?.stock ?? 0) > 0) {
+        } else if (Number(sourceStock.stock) === 0 && Number(prod?.stock ?? 0) > 0) {
           sourceStock = await tx.productStock.update({
             where: {
               productId_warehouseId: {

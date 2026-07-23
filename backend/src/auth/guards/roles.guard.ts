@@ -18,7 +18,7 @@ export class RolesGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException('No estás autenticado');
     }
-    if (user.role === Role.OWNER || user.role === Role.ADMIN || requiredRoles.includes(user.role)) {
+    if (user.role === Role.OWNER || requiredRoles.includes(user.role)) {
       return true;
     }
     throw new ForbiddenException('No tienes permisos suficientes para realizar esta acción');
