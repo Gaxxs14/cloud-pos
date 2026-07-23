@@ -28,7 +28,7 @@ export class ExchangeRatesController {
   /** GET /exchange-rates — Historial de tasas (managers/owners) */
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(Role.MANAGER, Role.OWNER)
+  @Roles(Role.MANAGER, Role.OWNER, Role.ADMIN)
   findAll(@GetUser('tenantId') tenantId: string) {
     return this.service.findAll(tenantId);
   }
@@ -36,7 +36,7 @@ export class ExchangeRatesController {
   /** POST /exchange-rates — Registrar nueva tasa del día (managers/owners) */
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(Role.MANAGER, Role.OWNER)
+  @Roles(Role.MANAGER, Role.OWNER, Role.ADMIN)
   create(
     @GetUser('tenantId') tenantId: string,
     @Body() dto: CreateExchangeRateDto,
