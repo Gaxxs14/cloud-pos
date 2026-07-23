@@ -274,9 +274,15 @@ export default function TransfersPage() {
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none bg-white text-xs transition"
                         >
                           <option value="">Selecciona producto...</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name} (SKU: {p.skuBarcode || 'N/A'})</option>
-                          ))}
+                          {products.map((p) => {
+                            const whStockObj = p.stocks?.find((s: any) => s.warehouseId === fromWarehouseId);
+                            const availStock = whStockObj ? Number(whStockObj.stock) : Number(p.stock || 0);
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — Disponibles en origen: {availStock} u. (SKU: {p.skuBarcode || 'N/A'})
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                       <div className="w-24">
