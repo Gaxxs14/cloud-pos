@@ -18,7 +18,7 @@ class UnauthorizedException implements Exception {
 }
 
 class ApiService {
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:3000');
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'https://cloud-pos-13ld.onrender.com');
   static String? _token;
   static VoidCallback? onUnauthorized;
 

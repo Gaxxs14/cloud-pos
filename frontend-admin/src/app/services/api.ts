@@ -1,4 +1,4 @@
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cloud-pos-13ld.onrender.com';
 
 function getHeaders(): HeadersInit {
   const headers: Record<string, string> = {
