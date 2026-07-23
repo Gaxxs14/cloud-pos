@@ -1,0 +1,28 @@
+# Root gitignore for Cloud-Pos multi-project
+
+# Dependencies
+**/node_modules/
+
+# Next.js
+**/.next/
+**/out/
+
+# Build outputs
+**/build/
+**/dist/
+
+# Flutter / Dart
+**/.dart_tool/
+**/.pub/
+**/.pub-cache/
+**/.flutter-plugins-dependencies
+
+# Environment & Credentials
+**/.env
+**/.env*.local
+
+# IDEs & System files
+.vscode/
+.idea/
+.DS_Store
+*.log
