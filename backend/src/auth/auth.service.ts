@@ -40,9 +40,28 @@ export class AuthService {
         },
       });
 
+      const branch = await tx.branch.create({
+        data: {
+          tenantId: tenant.id,
+          name: 'Sucursal Principal',
+          address: 'Sede Principal',
+          isActive: true,
+        },
+      });
+
+      await tx.warehouse.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          name: 'Bodega Principal',
+          isActive: true,
+        },
+      });
+
       const user = await tx.user.create({
         data: {
           tenantId: tenant.id,
+          branchId: branch.id,
           name: dto.adminName,
           email: dto.adminEmail.toLowerCase(),
           passwordHash,
