@@ -24,7 +24,7 @@ export default function TransfersPage() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   };
 
   const loadData = async () => {
@@ -38,6 +38,14 @@ export default function TransfersPage() {
       setTransfers(transfersData);
       setWarehouses(warehousesData);
       setProducts(productsData);
+
+      if (warehousesData && warehousesData.length >= 2) {
+        setFromWarehouseId((prev) => prev || warehousesData[0].id);
+        setToWarehouseId((prev) => prev || warehousesData[1].id);
+      } else if (warehousesData && warehousesData.length === 1) {
+        setFromWarehouseId((prev) => prev || warehousesData[0].id);
+      }
+
       setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Error al cargar información de traspasos');
@@ -50,17 +58,25 @@ export default function TransfersPage() {
   }, []);
 
   const handleOpenCreateModal = () => {
-    if (warehouses.length > 0) {
+    if (warehouses.length >= 2) {
       const firstWh = warehouses[0].id;
+      const secondWh = warehouses[1].id;
       setFromWarehouseId(firstWh);
-      const secondWh = warehouses.find((w) => w.id !== firstWh)?.id || '';
       setToWarehouseId(secondWh);
-    } else {
-      setFromWarehouseId('');
+    } else if (warehouses.length === 1) {
+      setFromWarehouseId(warehouses[0].id);
       setToWarehouseId('');
     }
     setTransferItems([{ productId: '', quantity: 1 }]);
     setIsModalOpen(true);
+  };
+
+  const handleFromWarehouseChange = (newFromId: string) => {
+    setFromWarehouseId(newFromId);
+    if (newFromId === toWarehouseId || !toWarehouseId) {
+      const alt = warehouses.find((w) => w.id !== newFromId);
+      if (alt) setToWarehouseId(alt.id);
+    }
   };
 
   const handleAddRow = () => {
@@ -83,7 +99,12 @@ export default function TransfersPage() {
   const handleCreateTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromWarehouseId || !toWarehouseId) {
-      showToast('Debes seleccionar almacén de origen y destino.', 'error');
+      showToast('Debes seleccionar un almacén de origen y uno de destino.', 'error');
+      return;
+    }
+
+    if (fromWarehouseId === toWarehouseId) {
+      showToast('La bodega de origen y destino no pueden ser la misma.', 'error');
       return;
     }
 
@@ -96,12 +117,7 @@ export default function TransfersPage() {
       }));
 
     if (items.length === 0) {
-      showToast('Debes agregar al menos un producto válido.', 'error');
-      return;
-    }
-
-    if (fromWarehouseId === toWarehouseId) {
-      showToast('La bodega de origen y destino no pueden ser la misma.', 'error');
+      showToast('Debes seleccionar al menos un producto válido y cantidad mayor a 0.', 'error');
       return;
     }
 
@@ -112,9 +128,6 @@ export default function TransfersPage() {
         items,
       });
 
-      // Reset
-      setFromWarehouseId('');
-      setToWarehouseId('');
       setTransferItems([{ productId: '', quantity: 1 }]);
       setIsModalOpen(false);
       await loadData();
@@ -238,10 +251,9 @@ export default function TransfersPage() {
                   <select
                     required
                     value={fromWarehouseId}
-                    onChange={(e) => setFromWarehouseId(e.target.value)}
+                    onChange={(e) => handleFromWarehouseChange(e.target.value)}
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none bg-white transition"
                   >
-                    <option value="">Selecciona origen...</option>
                     {warehouses.map((w) => (
                       <option key={w.id} value={w.id}>{w.branch?.name ?? 'Sin sucursal'} - {w.name}</option>
                     ))}
@@ -255,7 +267,6 @@ export default function TransfersPage() {
                     onChange={(e) => setToWarehouseId(e.target.value)}
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none bg-white transition"
                   >
-                    <option value="">Selecciona destino...</option>
                     {warehouses
                       .filter((w) => w.id !== fromWarehouseId)
                       .map((w) => (
@@ -365,13 +376,13 @@ export default function TransfersPage() {
               <div className="grid grid-cols-2 gap-4 border border-slate-100 p-4 rounded-xl bg-slate-50/50">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bodega Origen</span>
-                  <span className="font-bold text-slate-800 text-xs block mt-1">{selectedTransfer.fromWarehouse.name}</span>
-                  <span className="text-[10px] text-slate-450 block mt-0.5">{selectedTransfer.fromWarehouse.branch?.name}</span>
+                  <span className="font-bold text-slate-800 text-xs block mt-1">{selectedTransfer.fromWarehouse?.name}</span>
+                  <span className="text-[10px] text-slate-450 block mt-0.5">{selectedTransfer.fromWarehouse?.branch?.name}</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bodega Destino</span>
-                  <span className="font-bold text-slate-800 text-xs block mt-1">{selectedTransfer.toWarehouse.name}</span>
-                  <span className="text-[10px] text-slate-450 block mt-0.5">{selectedTransfer.toWarehouse.branch?.name}</span>
+                  <span className="font-bold text-slate-800 text-xs block mt-1">{selectedTransfer.toWarehouse?.name}</span>
+                  <span className="text-[10px] text-slate-450 block mt-0.5">{selectedTransfer.toWarehouse?.branch?.name}</span>
                 </div>
               </div>
 
