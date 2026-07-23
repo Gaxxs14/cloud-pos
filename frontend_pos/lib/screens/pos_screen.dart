@@ -30,6 +30,7 @@ class _PosScreenState extends State<PosScreen> {
   List<dynamic> _warehouses = [];
   String? _tempBranchId;
   String? _tempWarehouseId;
+  bool _loadingBranches = false;
 
   // Tasa de cambio USD → Bs para mostrar precios en bolívares
   double _usdToBs = 1.0;
@@ -1340,7 +1341,7 @@ class _PosScreenState extends State<PosScreen> {
                     final product = cartProvider.products.cast<Map<String, dynamic>?>().firstWhere(
                       (p) {
                         if (p == null) return false;
-                        final barcode = p['barcode']?.toString().trim() ?? '';
+                        final barcode = p['skuBarcode']?.toString().trim() ?? p['barcode']?.toString().trim() ?? '';
                         final sku = p['sku']?.toString().trim() ?? '';
                         final name = p['name']?.toString().toLowerCase().trim() ?? '';
                         return barcode == query || sku == query || name == query.toLowerCase();
