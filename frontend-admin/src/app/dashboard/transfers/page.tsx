@@ -242,9 +242,11 @@ export default function TransfersPage() {
                     className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none bg-white transition"
                   >
                     <option value="">Selecciona destino...</option>
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>{w.branch.name} - {w.name}</option>
-                    ))}
+                    {warehouses
+                      .filter((w) => w.id !== fromWarehouseId)
+                      .map((w) => (
+                        <option key={w.id} value={w.id}>{w.branch?.name ?? 'Sin sucursal'} - {w.name}</option>
+                      ))}
                   </select>
                 </div>
               </div>
