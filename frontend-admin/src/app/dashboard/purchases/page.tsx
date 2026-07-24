@@ -170,8 +170,8 @@ export default function PurchasesPage() {
     <div className="space-y-6 font-sans text-sm text-slate-650">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Compras y Abastecimiento</h1>
-          <p className="text-slate-400 text-xs">Registra facturas de compras para ingresar inventario directamente en bodegas y actualizar costos.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Compras y Abastecimiento</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium">Registra facturas de compras para ingresar inventario directamente en bodegas y actualizar costos.</p>
         </div>
         <button
           onClick={() => {

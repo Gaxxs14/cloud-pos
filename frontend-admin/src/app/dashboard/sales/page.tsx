@@ -68,8 +68,13 @@ export default function SalesPage() {
   }
 
   return (
-    <div className="space-y-5 font-sans text-sm text-slate-650">
-      <p className="text-slate-400 font-semibold text-xs">Revisa el historial detallado de todas las transacciones realizadas en las cajas de cobro.</p>
+    <div className="space-y-6 font-sans text-sm text-slate-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Historial de Ventas</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium">Revisa el historial detallado de todas las transacciones realizadas en las cajas de cobro.</p>
+        </div>
+      </div>
 
       {/* Search & Actions bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/80 p-4 rounded-xl shadow-sm">

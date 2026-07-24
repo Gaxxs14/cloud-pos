@@ -67,7 +67,13 @@ export default function ShiftsPage() {
   }
 
   return (
-    <div className="space-y-5 font-sans text-sm text-slate-650">
+    <div className="space-y-6 font-sans text-sm text-slate-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Control de Cajas y Turnos</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium">Supervisa aperturas, cierres de caja, arqueos y diferencias en efectivo de tus cajeros.</p>
+        </div>
+      </div>
       <p className="text-slate-400 font-semibold text-xs">Monitorea y audita los turnos de caja de los cajeros en tiempo real, controlando fondos y detectando faltantes de dinero.</p>
 
       {/* Filter panel */}

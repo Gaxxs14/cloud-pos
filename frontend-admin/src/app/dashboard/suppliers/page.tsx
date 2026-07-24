@@ -144,8 +144,8 @@ export default function SuppliersPage() {
     <div className="space-y-6 font-sans text-sm text-slate-650">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Directorio de Proveedores</h1>
-          <p className="text-slate-400 text-xs">Administra los proveedores mayoristas con los que adquieres mercancía para tus almacenes.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Directorio de Proveedores</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium">Administra los proveedores mayoristas con los que adquieres mercancía para tus almacenes.</p>
         </div>
         <button
           onClick={openCreateModal}

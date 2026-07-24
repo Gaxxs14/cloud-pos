@@ -129,8 +129,8 @@ export default function ReportsPage() {
       {/* Header (oculto en print si deseamos, pero útil para mostrar el título en PDF) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:border-b print:pb-2">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Análisis y Reportes</h1>
-          <p className="text-slate-400 text-xs print:hidden">Visualiza la salud financiera y descarga tu información contable.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Reportes y Analíticas</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium print:hidden">Visualiza la salud financiera de tu negocio y descarga reportes contables.</p>
           <p className="hidden print:block text-slate-500 text-xs">
             Periodo: {new Date(startDate).toLocaleDateString()} al {new Date(endDate).toLocaleDateString()}
           </p>

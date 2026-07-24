@@ -65,9 +65,9 @@ export default function ExchangeRatePage() {
   return (
     <div className="space-y-6 font-sans text-sm text-slate-700 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Tasa de Cambio</h1>
-        <p className="text-slate-500 text-xs mt-1">
-          Gestiona la tasa USD → Bolívares que se usará en cobros y reportes del día.
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Tasa de Cambio (USD ➔ Bs)</h1>
+        <p className="text-slate-500 text-xs mt-1 font-medium">
+          Gestiona la tasa oficial del dólar en Bolívares que se utilizará en cobros y reportes del día.
         </p>
       </div>
 

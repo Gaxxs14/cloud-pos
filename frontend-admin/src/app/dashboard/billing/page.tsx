@@ -75,8 +75,8 @@ export default function BillingPage() {
   return (
     <div className="space-y-6 font-sans text-sm text-slate-650">
       <div>
-        <h1 className="text-xl font-black text-slate-900 tracking-tight">Suscripción y Facturación</h1>
-        <p className="text-slate-400 text-xs">Administra los planes de pago y cobros de tu negocio en la nube.</p>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Suscripción y Facturación</h1>
+        <p className="text-slate-500 text-xs mt-1 font-medium">Administra los planes de pago y suscripción de tu negocio en la nube.</p>
       </div>
 
       {error && (
