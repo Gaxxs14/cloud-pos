@@ -493,23 +493,28 @@ export default function ProductsPage() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-5 border-t border-slate-100">
+              <div className="sticky bottom-0 bg-white pt-4 pb-1 border-t border-slate-200 flex justify-end gap-3 mt-4 z-10 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition text-xs"
+                  className="px-5 py-3 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition text-sm cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-sm text-xs"
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black rounded-xl transition shadow-md shadow-indigo-600/20 text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {formLoading ? (
                     <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   ) : (
-                    'Guardar Cambios'
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Guardar Producto</span>
+                    </>
                   )}
                 </button>
               </div>

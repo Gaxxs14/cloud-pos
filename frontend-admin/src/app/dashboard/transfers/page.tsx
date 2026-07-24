@@ -336,19 +336,22 @@ export default function TransfersPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <div className="sticky bottom-0 bg-white pt-4 pb-1 border-t border-slate-200 flex justify-end gap-3 mt-4 z-10">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-500 font-semibold rounded-xl hover:bg-slate-50 transition"
+                  className="px-5 py-2.5 border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition text-xs cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black rounded-xl transition shadow-md shadow-indigo-600/20 text-xs flex items-center gap-2 cursor-pointer"
                 >
-                  Completar Traspaso
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Completar Traspaso</span>
                 </button>
               </div>
             </form>

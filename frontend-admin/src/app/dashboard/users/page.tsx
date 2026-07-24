@@ -335,20 +335,29 @@ export default function UsersPage() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="sticky bottom-0 bg-white pt-4 pb-1 border-t border-slate-200 flex justify-end gap-3 mt-4 z-10">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 font-semibold text-xs rounded-xl transition"
+                  className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-755 text-white font-semibold text-xs rounded-xl transition disabled:opacity-50"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-xs rounded-xl transition shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
                 >
-                  {saving ? 'Guardando...' : 'Guardar'}
+                  {saving ? (
+                    'Guardando...'
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Guardar Usuario</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
