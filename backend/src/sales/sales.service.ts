@@ -250,7 +250,18 @@ export class SalesService {
         data: inventoryLogsData,
       });
 
-      return this.findOne(sale.id, tenantId);
+      return tx.sale.findFirst({
+        where: { id: sale.id, tenantId },
+        include: {
+          user: { select: { name: true, email: true } },
+          customer: true,
+          saleItems: {
+            include: {
+              product: { select: { name: true, skuBarcode: true } },
+            },
+          },
+        },
+      });
     });
   }
 }
