@@ -67,6 +67,19 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future<Map<String, dynamic>> updateProduct(String id, Map<String, dynamic> body) async {
+    final url = Uri.parse('$baseUrl/products/$id');
+    final response = await http.put(url, headers: _getHeaders(), body: jsonEncode(body));
+    if (response.statusCode >= 400) throw Exception('Error al actualizar producto');
+    return jsonDecode(response.body);
+  }
+
+  static Future<void> deleteProduct(String id) async {
+    final url = Uri.parse('$baseUrl/products/$id');
+    final response = await http.delete(url, headers: _getHeaders());
+    if (response.statusCode >= 400) throw Exception('Error al eliminar producto');
+  }
+
   static Future<List<dynamic>> getCategories() async {
     final url = Uri.parse('$baseUrl/categories');
     final response = await http.get(url, headers: _getHeaders());

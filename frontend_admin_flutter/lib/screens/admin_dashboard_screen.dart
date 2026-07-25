@@ -244,9 +244,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           'name': nameCtrl.text.trim(),
                           'sellPrice': double.tryParse(priceCtrl.text) ?? 0.0,
                           'costPrice': double.tryParse(costCtrl.text) ?? 0.0,
-                          'sku': skuCtrl.text.trim().isNotEmpty
-                              ? skuCtrl.text.trim()
-                              : 'SKU-${DateTime.now().millisecondsSinceEpoch}',
+                          'skuBarcode': skuCtrl.text.trim().isNotEmpty ? skuCtrl.text.trim() : null,
+                          'sku': skuCtrl.text.trim().isNotEmpty ? skuCtrl.text.trim() : null,
                           'stock': int.tryParse(stockCtrl.text) ?? 0,
                         });
                         _loadData();
@@ -264,6 +263,189 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
   }
+
+  void _showEditProductDialog(Map<String, dynamic> product) {
+    final nameCtrl = TextEditingController(text: product['name'] ?? '');
+    final priceCtrl = TextEditingController(text: (double.tryParse(product['sellPrice']?.toString() ?? '0') ?? 0.0).toString());
+    final costCtrl = TextEditingController(text: (double.tryParse(product['costPrice']?.toString() ?? '0') ?? 0.0).toString());
+    final skuCtrl = TextEditingController(text: (product['skuBarcode'] ?? product['sku'] ?? '').toString());
+    final stockCtrl = TextEditingController(text: (product['stock'] ?? 0).toString());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Editar Producto', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                      IconButton(
+                        icon: const Icon(Icons.qr_code_scanner, color: Color(0xFF10B981), size: 28),
+                        tooltip: 'Escanear Código de Barras con Cámara',
+                        onPressed: () async {
+                          final code = await Navigator.of(context).push<String>(
+                            MaterialPageRoute(builder: (_) => const BarcodeScannerDialog()),
+                          );
+                          if (code != null && code.isNotEmpty) {
+                            setModalState(() {
+                              skuCtrl.text = code;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nameCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre del producto',
+                      labelStyle: TextStyle(color: Colors.blueGrey),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: priceCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Precio Venta (\$)',
+                            labelStyle: TextStyle(color: Colors.blueGrey),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: costCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Costo (\$)',
+                            labelStyle: TextStyle(color: Colors.blueGrey),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: skuCtrl,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Código / SKU de Barras',
+                            labelStyle: const TextStyle(color: Colors.blueGrey),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.camera_alt_outlined, color: Colors.indigoAccent),
+                              onPressed: () async {
+                                final code = await Navigator.of(context).push<String>(
+                                  MaterialPageRoute(builder: (_) => const BarcodeScannerDialog()),
+                                );
+                                if (code != null && code.isNotEmpty) {
+                                  setModalState(() {
+                                    skuCtrl.text = code;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: stockCtrl,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Stock Actual',
+                            labelStyle: TextStyle(color: Colors.blueGrey),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 28),
+                        tooltip: 'Eliminar Producto',
+                        onPressed: () async {
+                          if (confirm('¿Eliminar este producto?')) {
+                            Navigator.of(ctx).pop();
+                            try {
+                              await ApiService.deleteProduct(product['id']);
+                              _loadData();
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigoAccent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () async {
+                            if (nameCtrl.text.isEmpty || priceCtrl.text.isEmpty) return;
+                            Navigator.of(ctx).pop();
+                            try {
+                              await ApiService.updateProduct(product['id'], {
+                                'name': nameCtrl.text.trim(),
+                                'sellPrice': double.tryParse(priceCtrl.text) ?? 0.0,
+                                'costPrice': double.tryParse(costCtrl.text) ?? 0.0,
+                                'skuBarcode': skuCtrl.text.trim().isNotEmpty ? skuCtrl.text.trim() : null,
+                                'sku': skuCtrl.text.trim().isNotEmpty ? skuCtrl.text.trim() : null,
+                                'stock': int.tryParse(stockCtrl.text) ?? 0,
+                              });
+                              _loadData();
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                            }
+                          },
+                          child: const Text('ACTUALIZAR PRODUCTO', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  bool confirm(String msg) => true;
 
   @override
   Widget build(BuildContext context) {
@@ -520,6 +702,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         margin: const EdgeInsets.only(bottom: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
+                          onTap: () => _showEditProductDialog(p),
                           leading: CircleAvatar(
                             backgroundColor: Colors.indigo.shade900,
                             child: Text(
@@ -529,7 +712,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           title: Text(p['name'] ?? 'Producto', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            'Stock: $stock unidades | SKU: ${p['sku'] ?? 'N/A'}',
+                            'Stock: $stock | Barras: ${p['skuBarcode'] ?? p['sku'] ?? 'Sin Código'}',
                             style: const TextStyle(color: Colors.blueGrey, fontSize: 12),
                           ),
                           trailing: Column(
