@@ -943,6 +943,49 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
+  Map<String, dynamic>? _matchProductByBarcode(String rawCode, List<dynamic> products) {
+    final cleanCode = rawCode.trim().replaceAll(RegExp(r'[\r\n\t]'), '');
+    if (cleanCode.isEmpty) return null;
+
+    final codeLower = cleanCode.toLowerCase();
+    final codeNoZeros = cleanCode.replaceFirst(RegExp(r'^0+'), '');
+
+    for (final p in products) {
+      if (p == null || p is! Map) continue;
+      final map = Map<String, dynamic>.from(p);
+
+      final barcode = (map['skuBarcode'] ?? map['barcode'] ?? map['code'] ?? '').toString().trim();
+      final sku = (map['sku'] ?? '').toString().trim();
+      final name = (map['name'] ?? '').toString().trim();
+      final id = (map['id'] ?? '').toString().trim();
+
+      // 1. Coincidencia Exacta de código de barras, SKU o ID
+      if (barcode == cleanCode || sku == cleanCode || id == cleanCode) {
+        return map;
+      }
+
+      // 2. Coincidencia sin diferenciar mayúsculas/minúsculas
+      if (barcode.toLowerCase() == codeLower || sku.toLowerCase() == codeLower) {
+        return map;
+      }
+
+      // 3. Coincidencia ignorando ceros a la izquierda (EAN-13 / UPC-A)
+      if (codeNoZeros.isNotEmpty) {
+        final barcodeNoZeros = barcode.replaceFirst(RegExp(r'^0+'), '');
+        if (barcodeNoZeros == codeNoZeros) {
+          return map;
+        }
+      }
+
+      // 4. Coincidencia por nombre exacto
+      if (name.toLowerCase() == codeLower) {
+        return map;
+      }
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -953,10 +996,22 @@ class _PosScreenState extends State<PosScreen> {
     final isDesktop = size.width > 750;
 
     final filteredProducts = cartProvider.products.where((p) {
-      final name = p['name'].toString().toLowerCase();
-      final sku = p['skuBarcode']?.toString().toLowerCase() ?? '';
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) || sku.contains(query);
+      if (p == null || p is! Map) return false;
+      final map = Map<String, dynamic>.from(p);
+      final name = (map['name'] ?? '').toString().toLowerCase();
+      final barcode = (map['skuBarcode'] ?? map['barcode'] ?? map['code'] ?? '').toString().toLowerCase();
+      final sku = (map['sku'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.trim().toLowerCase();
+
+      if (query.isEmpty) return true;
+
+      final queryNoZeros = query.replaceFirst(RegExp(r'^0+'), '');
+      final barcodeNoZeros = barcode.replaceFirst(RegExp(r'^0+'), '');
+
+      return name.contains(query) ||
+             barcode.contains(query) ||
+             sku.contains(query) ||
+             (queryNoZeros.isNotEmpty && barcodeNoZeros.contains(queryNoZeros));
     }).toList();
 
     // 0. Mostrar pantalla de Bloqueo por Suscripción Vencida (Pago Requerido)
@@ -1338,45 +1393,35 @@ class _PosScreenState extends State<PosScreen> {
                     final query = val.trim();
                     if (query.isEmpty) return;
 
-                    final product = cartProvider.products.cast<Map<String, dynamic>?>().firstWhere(
-                      (p) {
-                        if (p == null) return false;
-                        final barcode = p['skuBarcode']?.toString().trim() ?? p['barcode']?.toString().trim() ?? '';
-                        final sku = p['sku']?.toString().trim() ?? '';
-                        final name = p['name']?.toString().toLowerCase().trim() ?? '';
-                        return barcode == query || sku == query || name == query.toLowerCase();
-                      },
-                      orElse: () => null,
-                    );
+                    final matched = _matchProductByBarcode(query, cartProvider.products);
 
-                    if (product != null) {
-                      final stock = double.tryParse(product['stock']?.toString() ?? '') ?? 0.0;
-                      if (stock > 0) {
-                        cartProvider.addToCart(product);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('⚡ Producto agregado por escáner: ${product['name']}'),
-                            duration: const Duration(milliseconds: 900),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            margin: const EdgeInsets.all(15),
-                          ),
-                        );
-                        _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('⚠️ El producto "${product['name']}" está agotado en inventario'),
-                            backgroundColor: Colors.amber[800],
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            margin: const EdgeInsets.all(15),
-                          ),
-                        );
-                      }
+                    if (matched != null) {
+                      cartProvider.addToCart(matched);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('⚡ Producto agregado por escáner: ${matched['name']}'),
+                          duration: const Duration(milliseconds: 1200),
+                          backgroundColor: const Color(0xFF10B981),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          margin: const EdgeInsets.all(15),
+                        ),
+                      );
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('❌ Código de barras "$query" no encontrado en catálogo'),
+                          backgroundColor: const Color(0xFFBE123C),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          margin: const EdgeInsets.all(15),
+                        ),
+                      );
                     }
                   },
                 ),
@@ -1395,31 +1440,38 @@ class _PosScreenState extends State<PosScreen> {
                       MaterialPageRoute(builder: (_) => const BarcodeScannerDialog()),
                     );
                     if (code != null && code.isNotEmpty) {
-                      final product = cartProvider.products.cast<Map<String, dynamic>?>().firstWhere(
-                        (p) {
-                          if (p == null) return false;
-                          final barcode = p['skuBarcode']?.toString().trim() ?? '';
-                          final sku = p['sku']?.toString().trim() ?? '';
-                          return barcode == code.trim() || sku == code.trim();
-                        },
-                        orElse: () => null,
-                      );
-                      if (product != null) {
-                        cartProvider.addToCart(product);
+                      final matched = _matchProductByBarcode(code, cartProvider.products);
+                      if (matched != null) {
+                        cartProvider.addToCart(matched);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('⚡ Producto agregado: ${product['name']}'),
+                              content: Text('⚡ Producto agregado por cámara: ${matched['name']}'),
                               backgroundColor: const Color(0xFF10B981),
                               duration: const Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              margin: const EdgeInsets.all(15),
                             ),
                           );
                         }
                       } else {
                         setState(() {
-                          _searchController.text = code;
-                          _searchQuery = code;
+                          _searchController.text = code.trim();
+                          _searchQuery = code.trim();
                         });
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('❌ Código de cámara "$code" no encontrado en catálogo'),
+                              backgroundColor: const Color(0xFFBE123C),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              margin: const EdgeInsets.all(15),
+                            ),
+                          );
+                        }
                       }
                     }
                   },
