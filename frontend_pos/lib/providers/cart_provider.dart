@@ -6,16 +6,28 @@ import '../services/api_service.dart';
 class CartItem {
   final String productId;
   final String name;
-  final double unitPrice;
+  final double regularPrice;
+  final double? wholesalePrice;
+  final double? wholesaleMinQty;
   double quantity;
 
   CartItem({
     required this.productId,
     required this.name,
-    required this.unitPrice,
+    required this.regularPrice,
+    this.wholesalePrice,
+    this.wholesaleMinQty,
     required this.quantity,
   });
 
+  bool get isWholesaleApplied =>
+      wholesalePrice != null &&
+      wholesaleMinQty != null &&
+      wholesalePrice! > 0 &&
+      wholesaleMinQty! > 0 &&
+      quantity >= wholesaleMinQty!;
+
+  double get unitPrice => isWholesaleApplied ? wholesalePrice! : regularPrice;
   double get subtotal => unitPrice * quantity;
 }
 
@@ -126,13 +138,19 @@ class CartProvider with ChangeNotifier {
     final existingIndex = _items.indexWhere((item) => item.productId == product['id']);
     final qtyToAdd = customQty ?? double.tryParse(product['customWeightKg']?.toString() ?? '') ?? 1.0;
 
+    final sellPrice = double.tryParse(product['sellPrice']?.toString() ?? '') ?? 0.0;
+    final wPrice = double.tryParse(product['wholesalePrice']?.toString() ?? '');
+    final wMinQty = double.tryParse(product['wholesaleMinQty']?.toString() ?? '');
+
     if (existingIndex >= 0) {
       _items[existingIndex].quantity += qtyToAdd;
     } else {
       _items.add(CartItem(
         productId: product['id'],
         name: product['name'] ?? 'Producto',
-        unitPrice: double.tryParse(product['sellPrice']?.toString() ?? '') ?? 0.0,
+        regularPrice: sellPrice,
+        wholesalePrice: wPrice,
+        wholesaleMinQty: wMinQty,
         quantity: qtyToAdd,
       ));
     }

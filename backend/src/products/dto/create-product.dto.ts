@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsBoolean } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsBoolean, IsDateString } from 'class-validator';
 
 export class CreateProductDto {
   @IsString({ message: 'El nombre del producto debe ser un texto' })
@@ -34,6 +34,38 @@ export class CreateProductDto {
   @IsBoolean({ message: 'El estado activo debe ser un booleano' })
   @IsOptional()
   isActive?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isExempt?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  taxRate?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  wholesalePrice?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  wholesaleMinQty?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  unitsPerBox?: number;
+
+  @IsDateString()
+  @IsOptional()
+  expirationDate?: string;
+
+  @IsString()
+  @IsOptional()
+  lotNumber?: string;
 
   @IsString()
   @IsOptional()

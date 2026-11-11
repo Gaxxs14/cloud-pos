@@ -2445,9 +2445,28 @@ class _PosScreenState extends State<PosScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 3),
-                                  Text(
-                                    '\$${item.unitPrice.toStringAsFixed(2)} x ${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity.toStringAsFixed(3)}',
-                                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '\$${item.unitPrice.toStringAsFixed(2)} x ${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity.toStringAsFixed(3)}',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      if (item.isWholesaleApplied) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFECFDF5),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: const Color(0xFFA7F3D0)),
+                                          ),
+                                          child: const Text(
+                                            'MAYOR',
+                                            style: TextStyle(color: Color(0xFF047857), fontSize: 8, fontWeight: FontWeight.w800),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),

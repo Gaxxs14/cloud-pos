@@ -95,6 +95,11 @@ model Product {
   minStock   Decimal  @default(0) @map("min_stock") @db.Decimal(10, 2)
   isExempt   Boolean  @default(true) @map("is_exempt")
   taxRate    Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  wholesalePrice  Decimal?  @map("wholesale_price") @db.Decimal(10, 2)
+  wholesaleMinQty Decimal?  @map("wholesale_min_qty") @db.Decimal(10, 2)
+  unitsPerBox     Decimal?  @map("units_per_box") @db.Decimal(10, 2)
+  expirationDate  DateTime? @map("expiration_date")
+  lotNumber       String?   @map("lot_number")
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -199,6 +204,8 @@ enum InventoryLogReason {
   SALE
   RESTOCK
   ADJUSTMENT
+  WASTE
+  EXPIRED
 }
 
 model InventoryLog {
