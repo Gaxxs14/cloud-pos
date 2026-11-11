@@ -139,6 +139,8 @@ export class SalesService {
           customerId: dto.customerId || null,
           totalAmount: dto.totalAmount,
           taxAmount: dto.taxAmount || 0,
+          igtfAmount: dto.igtfAmount || 0,
+          igtfRate: dto.igtfRate || 0,
           discountAmount: dto.discountAmount || 0,
           paymentMethod: dto.paymentMethod,
           status: SaleStatus.COMPLETED,

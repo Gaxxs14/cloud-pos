@@ -7,7 +7,7 @@ class CartItem {
   final String productId;
   final String name;
   final double unitPrice;
-  int quantity;
+  double quantity;
 
   CartItem({
     required this.productId,
@@ -122,17 +122,18 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  void addToCart(dynamic product) {
+  void addToCart(dynamic product, [double? customQty]) {
     final existingIndex = _items.indexWhere((item) => item.productId == product['id']);
+    final qtyToAdd = customQty ?? double.tryParse(product['customWeightKg']?.toString() ?? '') ?? 1.0;
 
     if (existingIndex >= 0) {
-      _items[existingIndex].quantity += 1;
+      _items[existingIndex].quantity += qtyToAdd;
     } else {
       _items.add(CartItem(
         productId: product['id'],
         name: product['name'] ?? 'Producto',
         unitPrice: double.tryParse(product['sellPrice']?.toString() ?? '') ?? 0.0,
-        quantity: 1,
+        quantity: qtyToAdd,
       ));
     }
     notifyListeners();

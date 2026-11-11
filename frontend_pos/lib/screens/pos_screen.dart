@@ -746,6 +746,93 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
+  /// Solicita autorización con PIN de supervisor para anular productos o ventas
+  Future<bool> _requestSupervisorAuth(BuildContext context) async {
+    final authProv = Provider.of<AuthProvider>(context, listen: false);
+    final role = authProv.user?['role']?.toString().toUpperCase();
+    if (role == 'OWNER' || role == 'MANAGER' || role == 'ADMIN') {
+      return true;
+    }
+
+    final pinCtrl = TextEditingController();
+    bool authorized = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.shield_rounded, color: Color(0xFFF59E0B), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Autorización Requerida',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Se requiere clave de supervisor para anular o eliminar productos de la venta en curso:',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinCtrl,
+                obscureText: true,
+                autofocus: true,
+                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2),
+                decoration: InputDecoration(
+                  labelText: 'PIN o Clave Maestra',
+                  hintText: '••••',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: Color(0xFF64748B))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final input = pinCtrl.text.trim();
+                if (input == '1234' || input == 'admin123' || input == '123456') {
+                  authorized = true;
+                  Navigator.pop(ctx);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PIN o clave de supervisor incorrecta'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Autorizar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    return authorized;
+  }
+
   // Modal para Cierre de Caja
   void _showCloseShiftDialog(BuildContext context, ShiftProvider shiftProvider) {
     _declaredUsdController.text = '';
@@ -1051,6 +1138,29 @@ class _PosScreenState extends State<PosScreen> {
       // 4. Coincidencia por nombre exacto
       if (name.toLowerCase() == codeLower) {
         return map;
+      }
+    }
+
+    // 5. Decodificación inteligente de etiquetas de balanza (EAN-13: 20 CCCCC WWWWW C)
+    if (cleanCode.length == 13 && (cleanCode.startsWith('20') || cleanCode.startsWith('21'))) {
+      final plu = cleanCode.substring(2, 7);
+      final pluNoZeros = plu.replaceFirst(RegExp(r'^0+'), '');
+      final weightRaw = int.tryParse(cleanCode.substring(7, 12)) ?? 0;
+      final weightKg = weightRaw / 1000.0;
+
+      for (final p in products) {
+        if (p == null || p is! Map) continue;
+        final map = Map<String, dynamic>.from(p);
+        final barcode = (map['skuBarcode'] ?? map['barcode'] ?? map['code'] ?? '').toString().trim();
+        final sku = (map['sku'] ?? '').toString().trim();
+
+        if (barcode == plu || barcode == pluNoZeros || sku == plu || sku == pluNoZeros) {
+          final matched = Map<String, dynamic>.from(map);
+          if (weightKg > 0) {
+            matched['customWeightKg'] = weightKg;
+          }
+          return matched;
+        }
       }
     }
 
@@ -1853,7 +1963,33 @@ class _PosScreenState extends State<PosScreen> {
           ],
           const SizedBox(height: 12),
           const Divider(color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PRODUCTOS (${cartProvider.items.length})',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5),
+              ),
+              if (cartProvider.items.isNotEmpty)
+                InkWell(
+                  onTap: () async {
+                    final ok = await _requestSupervisorAuth(context);
+                    if (ok) {
+                      cartProvider.clearCart();
+                    }
+                  },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.delete_sweep_rounded, size: 15, color: Colors.redAccent),
+                      SizedBox(width: 3),
+                      Text('Anular Todo', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Expanded(
             child: cartProvider.items.isEmpty
                 ? const Center(
@@ -1899,7 +2035,7 @@ class _PosScreenState extends State<PosScreen> {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    '\$${item.unitPrice.toStringAsFixed(2)} x ${item.quantity}',
+                                    '\$${item.unitPrice.toStringAsFixed(2)} x ${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity.toStringAsFixed(3)}',
                                     style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
                                   ),
                                 ],
@@ -1908,7 +2044,13 @@ class _PosScreenState extends State<PosScreen> {
                             Row(
                               children: [
                                 InkWell(
-                                  onTap: () => cartProvider.removeOne(item.productId),
+                                  onTap: () async {
+                                    if (item.quantity <= 1) {
+                                      final ok = await _requestSupervisorAuth(context);
+                                      if (!ok) return;
+                                    }
+                                    cartProvider.removeOne(item.productId);
+                                  },
                                   child: Container(
                                     width: 28,
                                     height: 28,
@@ -1921,7 +2063,7 @@ class _PosScreenState extends State<PosScreen> {
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
-                                  '${item.quantity}',
+                                  item.quantity % 1 == 0 ? item.quantity.toInt().toString() : item.quantity.toStringAsFixed(3),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
                                 ),
                                 const SizedBox(width: 10),
@@ -2230,7 +2372,7 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                   BottomNavigationBarItem(
                     icon: Badge(
-                      label: Text('${cartProvider.items.fold(0, (sum, item) => sum + item.quantity)}'),
+                      label: Text(cartProvider.items.fold<num>(0, (sum, item) => sum + item.quantity).toStringAsFixed(0)),
                       isLabelVisible: cartProvider.items.isNotEmpty,
                       backgroundColor: const Color(0xFF4F46E5),
                       child: const Icon(Icons.shopping_bag_rounded, size: 20),

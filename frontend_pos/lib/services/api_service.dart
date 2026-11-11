@@ -143,6 +143,18 @@ class ApiService {
     }
   }
 
+  /// Sincroniza la tasa oficial del BCV en vivo desde el backend
+  static Future<double> syncBcvExchangeRate() async {
+    try {
+      final response = await post('/exchange-rates/sync-bcv', {});
+      final data = jsonDecode(response.body);
+      final rate = double.tryParse(data['usdToBs']?.toString() ?? '');
+      return (rate != null && rate > 0) ? rate : await getExchangeRate();
+    } catch (_) {
+      return await getExchangeRate();
+    }
+  }
+
   /// Obtiene los datos del perfil del usuario para validar el token
   static Future<http.Response> getProfile() async {
     return get('/auth/profile');

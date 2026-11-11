@@ -93,6 +93,8 @@ model Product {
   sellPrice  Decimal  @map("sell_price") @db.Decimal(10, 2)
   stock      Decimal  @default(0) @db.Decimal(10, 2)
   minStock   Decimal  @default(0) @map("min_stock") @db.Decimal(10, 2)
+  isExempt   Boolean  @default(true) @map("is_exempt")
+  taxRate    Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -152,6 +154,8 @@ model Sale {
   customerId     String?       @map("customer_id")
   totalAmount    Decimal       @map("total_amount") @db.Decimal(10, 2)
   taxAmount      Decimal       @map("tax_amount") @db.Decimal(10, 2)
+  igtfAmount     Decimal       @default(0) @map("igtf_amount") @db.Decimal(10, 2)
+  igtfRate       Decimal       @default(0) @map("igtf_rate") @db.Decimal(5, 2)
   discountAmount Decimal       @map("discount_amount") @db.Decimal(10, 2)
   paymentMethod  PaymentMethod @default(CASH) @map("payment_method")
   status         SaleStatus    @default(COMPLETED)

@@ -33,7 +33,15 @@ export class ExchangeRatesController {
     return this.service.findAll(tenantId);
   }
 
-  /** POST /exchange-rates — Registrar nueva tasa del día (managers/owners) */
+  /** POST /exchange-rates/sync-bcv — Sincronizar tasa oficial del BCV en vivo */
+  @Post('sync-bcv')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MANAGER, Role.OWNER, Role.CASHIER)
+  syncBcv(@GetUser('tenantId') tenantId: string) {
+    return this.service.syncBcvRate(tenantId);
+  }
+
+  /** POST /exchange-rates — Registrar nueva tasa del día manualmente (managers/owners) */
   @Post()
   @UseGuards(RolesGuard)
   @Roles(Role.MANAGER, Role.OWNER)

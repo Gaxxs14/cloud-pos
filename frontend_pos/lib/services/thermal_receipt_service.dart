@@ -12,6 +12,10 @@ class ThermalReceiptService {
     double? usdToBs,
     String? customerName,
     String? customerTaxId,
+    double? taxAmount,
+    double? igtfAmount,
+    double? exemptAmount,
+    double? taxableBase,
   }) {
     final now = DateTime.now();
     final dateStr = DateFormat('dd/MM/yyyy HH:mm:ss').format(now);
@@ -39,32 +43,49 @@ class ThermalReceiptService {
 
     // Lista de productos
     for (final item in items) {
-      final name = (item['name'] ?? 'Producto').toString();
+      final isExempt = item['isExempt'] == true || item['isExempt'] == null;
+      final tag = isExempt ? '(E)' : '(G)';
+      var name = (item['name'] ?? 'Producto').toString();
+      name = '$name $tag';
       final qty = (item['quantity'] ?? 1).toString();
       final price = double.tryParse(item['unitPrice']?.toString() ?? '0') ?? 0.0;
       final subtotal = price * (double.tryParse(qty) ?? 1.0);
 
-      // Nombre truncado o en línea completa si es largo
       if (name.length > 16) {
         buffer.writeln(name);
         buffer.writeln(
-          '                 ' +
-          qty.padLeft(4) +
-          '  ' +
-          '\$${subtotal.toStringAsFixed(2)}'.padLeft(9),
+          '                 ${qty.padLeft(4)}  ${'\$${subtotal.toStringAsFixed(2)}'.padLeft(9)}',
         );
       } else {
         buffer.writeln(
-          name.padRight(16) +
-          ' ' +
-          qty.padLeft(4) +
-          ' ' +
-          '\$${subtotal.toStringAsFixed(2)}'.padLeft(9),
+          '${name.padRight(16)} ${qty.padLeft(4)} ${'\$${subtotal.toStringAsFixed(2)}'.padLeft(9)}',
         );
       }
     }
 
     buffer.writeln(divider(32, '='));
+
+    // Desglose fiscal venezolano (SENIAT)
+    if (exemptAmount != null && exemptAmount > 0) {
+      buffer.writeln(
+        'EXENTO (E):'.padRight(18) + '\$${exemptAmount.toStringAsFixed(2)}'.padLeft(14),
+      );
+    }
+    if (taxableBase != null && taxableBase > 0) {
+      buffer.writeln(
+        'BASE IMP. (16%):'.padRight(18) + '\$${taxableBase.toStringAsFixed(2)}'.padLeft(14),
+      );
+    }
+    if (taxAmount != null && taxAmount > 0) {
+      buffer.writeln(
+        'IVA (16%):'.padRight(18) + '\$${taxAmount.toStringAsFixed(2)}'.padLeft(14),
+      );
+    }
+    if (igtfAmount != null && igtfAmount > 0) {
+      buffer.writeln(
+        'IGTF (3%):'.padRight(18) + '\$${igtfAmount.toStringAsFixed(2)}'.padLeft(14),
+      );
+    }
 
     // Totales
     buffer.writeln(
@@ -77,7 +98,7 @@ class ThermalReceiptService {
         'TOTAL BS:'.padRight(18) + 'Bs. ${totalBs.toStringAsFixed(2)}'.padLeft(14),
       );
       buffer.writeln(
-        'TASA BCV/REF:'.padRight(18) + '${usdToBs.toStringAsFixed(2)}'.padLeft(14),
+        'TASA BCV/REF:'.padRight(18) + usdToBs.toStringAsFixed(2).padLeft(14),
       );
     }
 

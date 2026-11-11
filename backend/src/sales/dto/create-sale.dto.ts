@@ -39,6 +39,16 @@ export class CreateSaleDto {
   @Min(0, { message: 'El total de impuestos no puede ser negativo' })
   taxAmount?: number;
 
+  @IsNumber({}, { message: 'El IGTF debe ser un número' })
+  @IsOptional()
+  @Min(0, { message: 'El IGTF no puede ser negativo' })
+  igtfAmount?: number;
+
+  @IsNumber({}, { message: 'La tasa de IGTF debe ser un número' })
+  @IsOptional()
+  @Min(0, { message: 'La tasa de IGTF no puede ser negativa' })
+  igtfRate?: number;
+
   @IsNumber({}, { message: 'El descuento total debe ser un número' })
   @IsOptional()
   @Min(0, { message: 'El descuento no puede ser negativo' })

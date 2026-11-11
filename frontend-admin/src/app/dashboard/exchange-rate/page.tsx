@@ -8,6 +8,7 @@ export default function ExchangeRatePage() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -33,6 +34,22 @@ export default function ExchangeRatePage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleSyncBcv = async () => {
+    setSyncing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await api.post('/exchange-rates/sync-bcv', {});
+      const val = parseFloat(res.usdToBs || 1).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+      setSuccess(`Tasa oficial del BCV sincronizada exitosamente: Bs. ${val} por 1 USD`);
+      loadData();
+    } catch (e: any) {
+      setError(e.message || 'Error al sincronizar con el BCV');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,11 +81,27 @@ export default function ExchangeRatePage() {
 
   return (
     <div className="space-y-6 font-sans text-sm text-slate-700 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Tasa de Cambio (USD ➔ Bs)</h1>
-        <p className="text-slate-500 text-xs mt-1 font-medium">
-          Gestiona la tasa oficial del dólar en Bolívares que se utilizará en cobros y reportes del día.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Tasa de Cambio (USD ➔ Bs)</h1>
+          <p className="text-slate-500 text-xs mt-1 font-medium">
+            Gestiona la tasa oficial del dólar en Bolívares que se utilizará en cobros y reportes del día.
+          </p>
+        </div>
+        <button
+          onClick={handleSyncBcv}
+          disabled={syncing}
+          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl transition shadow-sm text-xs flex items-center justify-center gap-2"
+        >
+          {syncing ? (
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          )}
+          ⚡ Sincronizar Tasa BCV Oficial
+        </button>
       </div>
 
       {/* Tasa vigente */}
@@ -82,13 +115,13 @@ export default function ExchangeRatePage() {
               </p>
               <p className="text-indigo-200 mt-1 text-sm">por cada 1 USD</p>
             </div>
-            <div className="bg-white/20 rounded-xl px-3 py-1.5 text-xs font-bold">
+            <div className="bg-white/20 rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-wider">
               {currentRate.source || 'MANUAL'}
             </div>
           </div>
           {currentRate.createdAt && (
             <p className="text-indigo-200 text-[11px] mt-4">
-              Actualizada: {new Date(currentRate.createdAt).toLocaleString('es-VE')}
+              Última actualización: {new Date(currentRate.createdAt).toLocaleString('es-VE')}
             </p>
           )}
         </div>
@@ -96,7 +129,7 @@ export default function ExchangeRatePage() {
 
       {/* Formulario */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
-        <h2 className="text-sm font-bold text-slate-700 mb-4">Registrar Nueva Tasa del Día</h2>
+        <h2 className="text-sm font-bold text-slate-700 mb-4">Ajustar Tasa Manualmente</h2>
 
         {error && (
           <div className="mb-4 p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl text-xs font-semibold">
@@ -123,7 +156,7 @@ export default function ExchangeRatePage() {
                 value={usdToBs}
                 onChange={(e) => setUsdToBs(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl focus:outline-none text-slate-900 font-bold text-lg transition"
-                placeholder="42.50"
+                placeholder="901.62"
               />
             </div>
             <div>
@@ -170,7 +203,7 @@ export default function ExchangeRatePage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                 </svg>
-                Guardar Tasa del Día
+                Guardar Tasa Manual
               </>
             )}
           </button>
@@ -183,7 +216,7 @@ export default function ExchangeRatePage() {
           <div className="p-4 border-b border-slate-100 bg-slate-50/50">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Historial de Tasas</span>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
             {history.map((r: any) => (
               <div key={r.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50/50 transition">
                 <div>
@@ -197,7 +230,7 @@ export default function ExchangeRatePage() {
                     {r.source}
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    {new Date(r.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(r.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>
