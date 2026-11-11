@@ -81,7 +81,7 @@ export default function DashboardLayout({
       items: [
         {
           name: 'Punto de Venta (Caja)',
-          path: '/pos',
+          path: '/dashboard/pos',
           badge: 'TERMINAL',
           badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
           icon: (
@@ -417,19 +417,17 @@ export default function DashboardLayout({
           
           <div className="flex items-center gap-3 md:gap-4">
             {/* Direct Link to Launch POS Terminal */}
-            <a
-              href="/pos"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-500 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-              title="Abrir terminal de caja y punto de venta en nueva pestaña"
+            <Link
+              href="/dashboard/pos"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-500 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              title="Abrir terminal de caja y punto de venta para escritorio"
             >
               <svg className="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <span className="hidden sm:inline">Punto de Venta</span>
               <span className="sm:hidden">POS</span>
-            </a>
+            </Link>
 
             {/* Live Status indicator */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs font-bold shadow-xs">
