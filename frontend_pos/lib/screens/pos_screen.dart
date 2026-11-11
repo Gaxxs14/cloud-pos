@@ -27,10 +27,31 @@ class _PosScreenState extends State<PosScreen> {
   final _descriptionController = TextEditingController();
 
   String _searchQuery = '';
-  int _currentMobileTab = 0; // 0 for Catalog, 1 for Cart
   final _searchFocusNode = FocusNode();
   bool _isTableView = false;
   String? _selectedCategory;
+  bool _isModalOpen = false;
+
+  Future<T?> _showGuardedDialog<T>(WidgetBuilder builder) async {
+    if (_isModalOpen) return null;
+    _isModalOpen = true;
+    try {
+      final res = await showDialog<T>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => builder(ctx),
+      );
+      return res;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isModalOpen = false;
+        });
+      } else {
+        _isModalOpen = false;
+      }
+    }
+  }
 
   List<dynamic> _branches = [];
   List<dynamic> _warehouses = [];
@@ -770,7 +791,6 @@ class _PosScreenState extends State<PosScreen> {
                                             );
                                             setState(() {
                                               _selectedCustomer = null;
-                                              _currentMobileTab = 0;
                                             });
                                           }
                                         } catch (e) {
@@ -794,7 +814,6 @@ class _PosScreenState extends State<PosScreen> {
                                               );
                                               setState(() {
                                                 _selectedCustomer = null;
-                                                _currentMobileTab = 0;
                                               });
                                             }
                                           } else {
@@ -841,114 +860,221 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  // Menú de Caja (Bottom Sheet)
-  void _showShiftMenuBottomSheet(BuildContext context, ShiftProvider shiftProvider) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
+  // Menú de Caja y Turno (Ventana Modal de Escritorio para Web POS)
+  void _showShiftMenuDialog(BuildContext context, ShiftProvider shiftProvider) {
+    _showGuardedDialog((ctx) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: EdgeInsets.zero,
+        content: Container(
+          width: 520,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Acciones de Caja',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: const BoxDecoration(
                   color: Color(0xFF0F172A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+                          ),
+                          child: const Icon(Icons.calculate_rounded, color: Color(0xFF818CF8), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Gestión de Turno y Caja [F7]',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            Text(
+                              shiftProvider.selectedBranchName != null
+                                  ? '${shiftProvider.selectedBranchName} • ${shiftProvider.selectedWarehouseName}'
+                                  : 'Turno en curso',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.add_moderator, color: Color(0xFF4F46E5)),
+              // Body options
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildShiftActionTile(
+                      icon: Icons.add_moderator_rounded,
+                      iconColor: const Color(0xFF4F46E5),
+                      bgColor: const Color(0xFFEEF2FF),
+                      title: 'Ingresar Efectivo (Fondo / Cambio)',
+                      subtitle: 'Registrar entrada de dinero adicional a la gaveta',
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _showAddTransactionDialog(context, shiftProvider, 'IN');
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildShiftActionTile(
+                      icon: Icons.remove_moderator_rounded,
+                      iconColor: const Color(0xFFEF4444),
+                      bgColor: const Color(0xFFFEF2F2),
+                      title: 'Retirar Efectivo (Salida de Caja)',
+                      subtitle: 'Registrar retiros de efectivo o pagos a proveedores',
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _showAddTransactionDialog(context, shiftProvider, 'OUT');
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildShiftActionTile(
+                      icon: Icons.analytics_outlined,
+                      iconColor: const Color(0xFF10B981),
+                      bgColor: const Color(0xFFECFDF5),
+                      title: 'Arqueo Teórico (Corte Parcial X)',
+                      subtitle: 'Consultar acumulados de ventas y dinero en tiempo real',
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        try {
+                          await shiftProvider.checkActiveShift();
+                          if (context.mounted && shiftProvider.activeShift != null) {
+                            _showPartialCutDialog(context, shiftProvider.activeShift!);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error al refrescar balance de caja: $e'), backgroundColor: Colors.redAccent),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildShiftActionTile(
+                      icon: Icons.receipt_long_rounded,
+                      iconColor: const Color(0xFF6366F1),
+                      bgColor: const Color(0xFFEEF2FF),
+                      title: 'Reimprimir Último Ticket',
+                      subtitle: 'Generar copia térmica del último ticket emitido',
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _showLastReceiptDialog(context);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildShiftActionTile(
+                      icon: Icons.power_settings_new_rounded,
+                      iconColor: const Color(0xFFF97316),
+                      bgColor: const Color(0xFFFFF7ED),
+                      title: 'Cerrar Caja (Corte Final Z)',
+                      subtitle: 'Finalizar jornada, arqueo ciego y cuadre de caja',
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _showCloseShiftDialog(context, shiftProvider);
+                      },
+                    ),
+                  ],
                 ),
-                title: const Text('Ingresar Efectivo (Fondo)', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Ingresa dinero extra para cambio'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showAddTransactionDialog(context, shiftProvider, 'IN');
-                },
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFFDF2F2), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.remove_moderator, color: Color(0xFFEF4444)),
+              // Footer
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
                 ),
-                title: const Text('Retirar Efectivo (Salida)', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Registra retiros de caja o pago a proveedores'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showAddTransactionDialog(context, shiftProvider, 'OUT');
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.analytics_outlined, color: Color(0xFF10B981)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Atajo rápido: [F7] para abrir • [Esc] para cerrar', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Cerrar [Esc]', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
-                title: const Text('Arqueo Teórico (Corte Parcial)', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Ver acumulados actuales de dinero'),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  try {
-                    await shiftProvider.checkActiveShift();
-                    if (context.mounted && shiftProvider.activeShift != null) {
-                      _showPartialCutDialog(context, shiftProvider.activeShift!);
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error al refrescar balance de caja: $e'), backgroundColor: Colors.redAccent),
-                      );
-                    }
-                  }
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF4F46E5)),
-                ),
-                title: const Text('Reimprimir Último Ticket', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Generar formato térmico del último ticket'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showLastReceiptDialog(context);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.power_settings_new, color: Color(0xFFF97316)),
-                ),
-                title: const Text('Cerrar Caja (Corte de Turno)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF97316))),
-                subtitle: const Text('Finalizar labores y contar efectivo'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showCloseShiftDialog(context, shiftProvider);
-                },
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    });
+  }
+
+  Widget _buildShiftActionTile({
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A))),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1593,6 +1719,15 @@ class _PosScreenState extends State<PosScreen> {
 
     if (!shiftProvider.isOpen) return false;
 
+    // Si ya hay un modal abierto, permitir únicamente cerrar con Escape
+    if (_isModalOpen) {
+      if (key == LogicalKeyboardKey.escape) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+        return true;
+      }
+      return false; // Bloquear repeticiones de F1..F12 mientras hay modal abierto
+    }
+
     if (key == LogicalKeyboardKey.f1) {
       _showShortcutsHelpDialog(context);
       return true;
@@ -1616,7 +1751,7 @@ class _PosScreenState extends State<PosScreen> {
       _handleHoldOrRestoreSale(context, cartProvider);
       return true;
     } else if (key == LogicalKeyboardKey.f7) {
-      _showShiftMenuBottomSheet(context, shiftProvider);
+      _showShiftMenuDialog(context, shiftProvider);
       return true;
     } else if (key == LogicalKeyboardKey.f9) {
       _confirmClearCart(context, cartProvider);
@@ -1674,193 +1809,187 @@ class _PosScreenState extends State<PosScreen> {
       {'key': 'Esc', 'desc': 'Cerrar cualquier ventana o modal activo'},
     ];
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.keyboard_rounded, color: Color(0xFF4F46E5), size: 24),
+    _showGuardedDialog((ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'Atajos de Teclado POS',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Usa tu teclado físico o numérico para operar la caja a máxima velocidad de supermercado:',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 16),
-              ...shortcuts.map((s) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
-                        ],
-                      ),
-                      child: Text(
-                        s['key']!,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        s['desc']!,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-            ],
+            child: const Icon(Icons.keyboard_rounded, color: Color(0xFF4F46E5), size: 24),
           ),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4F46E5),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Entendido [Esc]', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 12),
+          const Text(
+            'Atajos de Teclado POS',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
           ),
         ],
       ),
-    );
-  }
-
-  void _showCustomerSelectorDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        String filter = '';
-        return StatefulBuilder(
-          builder: (context, setDlgState) {
-            final filtered = _customers.where((c) {
-              final q = filter.trim().toLowerCase();
-              if (q.isEmpty) return true;
-              final name = (c['name'] ?? '').toString().toLowerCase();
-              final doc = (c['documentNumber'] ?? c['dni'] ?? '').toString().toLowerCase();
-              final phone = (c['phone'] ?? '').toString().toLowerCase();
-              return name.contains(q) || doc.contains(q) || phone.contains(q);
-            }).toList();
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Usa tu teclado físico o numérico para operar la caja a máxima velocidad de supermercado:',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ...shortcuts.map((s) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
-                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+                      ],
                     ),
-                    child: const Icon(Icons.person_search_rounded, color: Color(0xFF4F46E5), size: 22),
+                    child: Text(
+                      s['key']!,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Seleccionar Cliente [F3]',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                      s['desc']!,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                     ),
                   ),
                 ],
               ),
-              content: SizedBox(
-                width: 480,
-                height: 400,
-                child: Column(
-                  children: [
-                    TextField(
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar por nombre, CI, RIF o teléfono...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        filled: true,
-                        fillColor: const Color(0xFFF1F5F9),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                      ),
-                      onChanged: (val) => setDlgState(() => filter = val),
-                    ),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      tileColor: _selectedCustomer == null ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
-                      leading: const Icon(Icons.public, color: Color(0xFF4F46E5)),
-                      title: const Text('Cliente General (Público)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      subtitle: const Text('Sin datos fiscales registrados', style: TextStyle(fontSize: 11)),
-                      trailing: _selectedCustomer == null ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5)) : null,
-                      onTap: () {
-                        setState(() => _selectedCustomer = null);
-                        Navigator.of(ctx).pop();
-                      },
-                    ),
-                    const Divider(height: 16),
-                    Expanded(
-                      child: filtered.isEmpty
-                          ? const Center(child: Text('No hay clientes coincidentes', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)))
-                          : ListView.separated(
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 6),
-                              itemBuilder: (_, i) {
-                                final cust = filtered[i];
-                                final isSelected = _selectedCustomer != null && _selectedCustomer['id'] == cust['id'];
-                                final doc = cust['documentNumber'] ?? cust['dni'] ?? 'Sin doc';
-                                final phone = cust['phone'] ?? '';
-                                return ListTile(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0)),
-                                  ),
-                                  tileColor: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
-                                  title: Text(cust['name'] ?? 'Cliente', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  subtitle: Text('Doc: $doc ${phone.isNotEmpty ? "• Tel: $phone" : ""}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                                  trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5)) : const Icon(Icons.chevron_right, size: 18, color: Color(0xFF94A3B8)),
-                                  onTap: () {
-                                    setState(() => _selectedCustomer = cust);
-                                    Navigator.of(ctx).pop();
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+            )),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4F46E5),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Entendido [Esc]', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ],
+    ));
+  }
+
+  void _showCustomerSelectorDialog(BuildContext context) {
+    _showGuardedDialog((ctx) {
+      String filter = '';
+      return StatefulBuilder(
+        builder: (context, setDlgState) {
+          final filtered = _customers.where((c) {
+            final q = filter.trim().toLowerCase();
+            if (q.isEmpty) return true;
+            final name = (c['name'] ?? '').toString().toLowerCase();
+            final doc = (c['documentNumber'] ?? c['dni'] ?? '').toString().toLowerCase();
+            final phone = (c['phone'] ?? '').toString().toLowerCase();
+            return name.contains(q) || doc.contains(q) || phone.contains(q);
+          }).toList();
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.person_search_rounded, color: Color(0xFF4F46E5), size: 22),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cerrar [Esc]'),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Seleccionar Cliente [F3]',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                  ),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
+            ),
+            content: SizedBox(
+              width: 480,
+              height: 400,
+              child: Column(
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre, CI, RIF o teléfono...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      filled: true,
+                      fillColor: const Color(0xFFF1F5F9),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    ),
+                    onChanged: (val) => setDlgState(() => filter = val),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    tileColor: _selectedCustomer == null ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+                    leading: const Icon(Icons.public, color: Color(0xFF4F46E5)),
+                    title: const Text('Cliente General (Público)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    subtitle: const Text('Sin datos fiscales registrados', style: TextStyle(fontSize: 11)),
+                    trailing: _selectedCustomer == null ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5)) : null,
+                    onTap: () {
+                      setState(() => _selectedCustomer = null);
+                      Navigator.of(ctx).pop();
+                    },
+                  ),
+                  const Divider(height: 16),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('No hay clientes coincidentes', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)))
+                        : ListView.separated(
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, index) => const SizedBox(height: 6),
+                            itemBuilder: (_, i) {
+                              final cust = filtered[i];
+                              final isSelected = _selectedCustomer != null && _selectedCustomer['id'] == cust['id'];
+                              final doc = cust['documentNumber'] ?? cust['dni'] ?? 'Sin doc';
+                              final phone = cust['phone'] ?? '';
+                              return ListTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0)),
+                                ),
+                                tileColor: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
+                                title: Text(cust['name'] ?? 'Cliente', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                subtitle: Text('Doc: $doc ${phone.isNotEmpty ? "• Tel: $phone" : ""}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5)) : const Icon(Icons.chevron_right, size: 18, color: Color(0xFF94A3B8)),
+                                onTap: () {
+                                  setState(() => _selectedCustomer = cust);
+                                  Navigator.of(ctx).pop();
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cerrar [Esc]'),
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   void _handleHoldOrRestoreSale(BuildContext context, CartProvider cartProvider) {
@@ -1875,9 +2004,7 @@ class _PosScreenState extends State<PosScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
+    _showGuardedDialog((ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -2179,7 +2306,7 @@ class _PosScreenState extends State<PosScreen> {
               cartProvider.heldSales.isNotEmpty ? const Color(0xFFD97706) : null,
             ),
             const SizedBox(width: 6),
-            _buildShortcutBadge('F7', 'Turno / Arqueo', () => _showShiftMenuBottomSheet(context, shiftProvider)),
+            _buildShortcutBadge('F7', 'Turno / Arqueo', () => _showShiftMenuDialog(context, shiftProvider)),
             const SizedBox(width: 6),
             _buildShortcutBadge('F9', 'Cancelar Venta', () => _confirmClearCart(context, cartProvider), const Color(0xFFEF4444)),
             const SizedBox(width: 6),
@@ -3470,7 +3597,7 @@ class _PosScreenState extends State<PosScreen> {
                     IconButton(
                       tooltip: 'Control de Turno / Arqueo [F7]',
                       icon: const Icon(Icons.calculate_rounded, color: Color(0xFF818CF8), size: 24),
-                      onPressed: () => _showShiftMenuBottomSheet(context, shiftProvider),
+                      onPressed: () => _showShiftMenuDialog(context, shiftProvider),
                     ),
                     const SizedBox(width: 4),
                     IconButton(
@@ -3495,54 +3622,19 @@ class _PosScreenState extends State<PosScreen> {
           // Cinta de Atajos de Teclado Físicos
           _buildShortcutsRibbon(context, shiftProvider, cartProvider),
           Expanded(
-            child: isDesktop
+            child: size.width > 600
                 ? Row(
                     children: [
-                      Expanded(flex: 65, child: catalogPane),
+                      Expanded(flex: 62, child: catalogPane),
                       const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFCBD5E1)),
-                      Expanded(flex: 35, child: cartPane),
+                      Expanded(flex: 38, child: cartPane),
                     ],
                   )
-                : (_currentMobileTab == 0 ? catalogPane : cartPane),
+                : catalogPane,
           ),
         ],
       ),
-      bottomNavigationBar: isDesktop
-          ? null
-          : Container(
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-              ),
-              child: BottomNavigationBar(
-                currentIndex: _currentMobileTab,
-                backgroundColor: Colors.white,
-                onTap: (index) {
-                  setState(() {
-                    _currentMobileTab = index;
-                  });
-                },
-                selectedItemColor: const Color(0xFF4F46E5),
-                unselectedItemColor: const Color(0xFF94A3B8),
-                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-                elevation: 0,
-                items: [
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.grid_view_rounded, size: 20),
-                    label: 'Catálogo',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Badge(
-                      label: Text(cartProvider.items.fold<num>(0, (sum, item) => sum + item.quantity).toStringAsFixed(0)),
-                      isLabelVisible: cartProvider.items.isNotEmpty,
-                      backgroundColor: const Color(0xFF4F46E5),
-                      child: const Icon(Icons.shopping_bag_rounded, size: 20),
-                    ),
-                    label: 'Carrito',
-                  ),
-                ],
-              ),
-            ),
+      bottomNavigationBar: null,
     );
   }
 
