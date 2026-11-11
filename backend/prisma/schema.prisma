@@ -105,6 +105,9 @@ model Product {
   transferItems InventoryTransferItem[]
   purchaseItems PurchaseItem[]
 
+  @@index([tenantId, skuBarcode])
+  @@index([tenantId, isActive])
+  @@index([tenantId, categoryId])
   @@map("products")
 }
 
@@ -120,10 +123,12 @@ model Customer {
   currentDebt  Decimal             @default(0) @map("current_debt") @db.Decimal(10, 2)
   createdAt    DateTime            @default(now())
 
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sales      Sale[]
   creditLogs CustomerCreditLog[]
 
+  @@index([tenantId, name])
+  @@index([tenantId, taxId])
   @@map("customers")
 }
 
@@ -164,6 +169,10 @@ model Sale {
   warehouse  Warehouse?          @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   creditLogs CustomerCreditLog[]
 
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId])
+  @@index([tenantId, shiftId])
+  @@index([tenantId, customerId])
   @@map("sales")
 }
 
@@ -242,6 +251,8 @@ model CashShift {
   sales            Sale[]
   cashTransactions CashTransaction[]
 
+  @@index([tenantId, status])
+  @@index([tenantId, userId, status])
   @@map("cash_shifts")
 }
 
@@ -380,6 +391,7 @@ model ExchangeRate {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, date])
   @@map("exchange_rates")
 }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
@@ -15,8 +15,11 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll(@GetUser('tenantId') tenantId: string) {
-    return this.productsService.findAll(tenantId);
+  findAll(
+    @GetUser('tenantId') tenantId: string,
+    @Query('search') search?: string,
+  ) {
+    return this.productsService.findAll(tenantId, search);
   }
 
   @Get(':id')

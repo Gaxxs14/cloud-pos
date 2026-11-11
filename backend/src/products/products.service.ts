@@ -7,9 +7,19 @@ import { InventoryLogReason } from '@prisma/client';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(tenantId: string) {
+  async findAll(tenantId: string, search?: string) {
+    const whereClause: any = { tenantId, isActive: true };
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
+      whereClause.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { skuBarcode: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.product.findMany({
-      where: { tenantId },
+      where: whereClause,
       include: {
         category: true,
         stocks: {

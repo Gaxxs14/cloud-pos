@@ -51,10 +51,12 @@ class ApiService {
     return headers;
   }
 
+  static const Duration timeoutDuration = Duration(seconds: 12);
+
   static Future<http.Response> get(String path) async {
     final url = Uri.parse('$baseUrl$path');
     try {
-      final response = await http.get(url, headers: _getHeaders());
+      final response = await http.get(url, headers: _getHeaders()).timeout(timeoutDuration);
       _checkResponse(response);
       return response;
     } catch (e) {
@@ -69,7 +71,7 @@ class ApiService {
         url,
         headers: _getHeaders(),
         body: jsonEncode(body),
-      );
+      ).timeout(timeoutDuration);
       _checkResponse(response);
       return response;
     } catch (e) {
@@ -84,7 +86,7 @@ class ApiService {
         url,
         headers: _getHeaders(),
         body: jsonEncode(body),
-      );
+      ).timeout(timeoutDuration);
       _checkResponse(response);
       return response;
     } catch (e) {
@@ -95,7 +97,7 @@ class ApiService {
   static Future<http.Response> delete(String path) async {
     final url = Uri.parse('$baseUrl$path');
     try {
-      final response = await http.delete(url, headers: _getHeaders());
+      final response = await http.delete(url, headers: _getHeaders()).timeout(timeoutDuration);
       _checkResponse(response);
       return response;
     } catch (e) {

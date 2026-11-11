@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
@@ -1396,6 +1397,7 @@ class _PosScreenState extends State<PosScreen> {
                     final matched = _matchProductByBarcode(query, cartProvider.products);
 
                     if (matched != null) {
+                      HapticFeedback.lightImpact();
                       cartProvider.addToCart(matched);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -1442,6 +1444,7 @@ class _PosScreenState extends State<PosScreen> {
                     if (code != null && code.isNotEmpty) {
                       final matched = _matchProductByBarcode(code, cartProvider.products);
                       if (matched != null) {
+                        HapticFeedback.lightImpact();
                         cartProvider.addToCart(matched);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
