@@ -57,6 +57,7 @@ export default function NativeWebPosPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isTableView, setIsTableView] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'CATALOG' | 'TICKET'>('CATALOG');
 
   // Carrito de compras
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -416,7 +417,8 @@ export default function NativeWebPosPage() {
   // ─── PANTALLA: APERTURA DE CAJA (SI NO HAY TURNO) ───
   if (!shift) {
     return (
-      <div className="max-w-xl mx-auto my-12 p-8 bg-white rounded-2xl border border-slate-200 shadow-xl font-sans">
+      <div className="flex-1 flex items-center justify-center p-3 sm:p-6 w-full">
+        <div className="max-w-xl w-full my-auto p-5 sm:p-8 bg-white rounded-2xl border border-slate-200 shadow-xl font-sans">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -482,19 +484,20 @@ export default function NativeWebPosPage() {
           </button>
         </form>
       </div>
+    </div>
     );
   }
 
   // ─── ESTACIÓN DE TRABAJO POS COMPLETA ───
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] font-sans text-slate-800 -m-4 md:-m-8">
-      {/* 1. Barra Superior de Atajos Físicos de Teclado */}
-      <div className="bg-slate-950 text-slate-300 px-4 py-2 border-b border-slate-800 flex items-center justify-between shrink-0 overflow-x-auto gap-2">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] w-full font-sans text-slate-800 overflow-hidden bg-slate-100 relative">
+      {/* 1. Barra Superior de Atajos Físicos de Teclado y Estado */}
+      <div className="bg-slate-950 text-slate-300 px-3 sm:px-4 py-2 border-b border-slate-800 flex items-center justify-between shrink-0 overflow-x-auto gap-2 scrollbar-none">
         <div className="flex items-center gap-2 text-xs font-bold shrink-0">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-white font-black">CAJA ACTIVA</span>
-          <span className="text-slate-500">|</span>
-          <span className="text-indigo-400">Tasa BCV: Bs. {usdToBs.toFixed(2)}</span>
+          <span className="text-white font-black text-[11px] sm:text-xs">CAJA ACTIVA</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-indigo-400 text-[11px] sm:text-xs font-mono">Tasa: Bs. {usdToBs.toFixed(2)}</span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -572,10 +575,49 @@ export default function NativeWebPosPage() {
         </div>
       </div>
 
-      {/* 2. Cuerpo Principal de 2 Columnas: Catálogo (Izquierda 65%) + Ticket Tape (Derecha 35%) */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* 2. Selector de Pestañas en Móvil (Visible solo en pantallas < lg) */}
+      <div className="lg:hidden flex bg-white border-b border-slate-200 p-1 shrink-0 z-10 shadow-xs">
+        <button
+          onClick={() => setMobileTab('CATALOG')}
+          className={`flex-1 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            mobileTab === 'CATALOG'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          Catálogo ({filteredProducts.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('TICKET')}
+          className={`flex-1 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            mobileTab === 'TICKET'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Ticket ({cart.length})
+          {cart.length > 0 && (
+            <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1">
+              ${totalUsd.toFixed(2)}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* 3. Cuerpo Principal: Catálogo (Izquierda) + Ticket (Derecha en Desktop / Pestaña en Móvil) */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* COLUMNA IZQUIERDA: Catálogo de Productos */}
-        <div className="flex-1 flex flex-col p-4 border-r border-slate-200/80 bg-slate-50/50 overflow-hidden">
+        <div
+          className={`flex-1 flex flex-col p-2.5 sm:p-4 border-r border-slate-200/80 bg-slate-50/50 overflow-hidden ${
+            mobileTab === 'CATALOG' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {/* Barra de Búsqueda y Switcher de Vista */}
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <form onSubmit={handleBarcodeSubmit} className="flex-1 relative">
@@ -811,7 +853,11 @@ export default function NativeWebPosPage() {
         </div>
 
         {/* COLUMNA DERECHA: Cinta de Registro de Caja (POS Tape) */}
-        <div className="w-80 md:w-96 flex flex-col bg-white border-l border-slate-200 shrink-0">
+        <div
+          className={`w-full lg:w-80 xl:w-96 flex flex-col bg-white border-l border-slate-200 shrink-0 ${
+            mobileTab === 'TICKET' ? 'flex flex-1 lg:flex-initial' : 'hidden lg:flex'
+          }`}
+        >
           {/* Cabecera del Ticket */}
           <div className="p-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
             <div>
@@ -956,6 +1002,34 @@ export default function NativeWebPosPage() {
             </button>
           </div>
         </div>
+
+        {/* Barra Flotante de Resumen Móvil cuando se está en el Catálogo */}
+        {mobileTab === 'CATALOG' && cart.length > 0 && (
+          <div className="lg:hidden absolute bottom-3 left-3 right-3 z-30">
+            <button
+              onClick={() => setMobileTab('TICKET')}
+              className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white p-3 rounded-2xl shadow-2xl shadow-emerald-950/50 flex items-center justify-between border border-emerald-400/40 transition active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black text-sm">
+                  {cart.reduce((s, i) => s + i.quantity, 0)}
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black leading-tight">Ver Ticket ({cart.length})</div>
+                  <div className="text-[10px] text-emerald-100 font-mono">
+                    Bs. {(totalUsd * usdToBs).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-black">${totalUsd.toFixed(2)}</span>
+                <span className="bg-white/20 px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1">
+                  Cobrar →
+                </span>
+              </div>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ─── MODALES DEL POS (CON APERTURA SEGURA) ─── */}
@@ -963,7 +1037,7 @@ export default function NativeWebPosPage() {
       {/* 1. Modal de Ayuda de Atajos [F1] */}
       {activeModal === 'HELP' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 ⌨️ Atajos de Teclado POS
@@ -1009,7 +1083,7 @@ export default function NativeWebPosPage() {
       {/* 2. Modal de Selección de Cliente [F3] */}
       {activeModal === 'CUSTOMER' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-black text-slate-900">Seleccionar Cliente [F3]</h3>
               <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600">
@@ -1067,7 +1141,7 @@ export default function NativeWebPosPage() {
       {/* 3. Modal de Movimiento de Caja [F4] */}
       {activeModal === 'CASH_TX' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-4">Movimiento de Caja [F4]</h3>
 
             <div className="grid grid-cols-2 gap-2 mb-4">
@@ -1145,7 +1219,7 @@ export default function NativeWebPosPage() {
       {/* 4. Modal de Tickets en Espera [F6] */}
       {activeModal === 'HELD_SALES' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-3">Tickets en Espera [F6]</h3>
 
             {cart.length > 0 && (
@@ -1233,7 +1307,7 @@ export default function NativeWebPosPage() {
       {/* 5. Modal de Gestión de Turno [F7] */}
       {activeModal === 'SHIFT_MENU' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-1">Gestión de Turno & Caja [F7]</h3>
             <p className="text-xs text-slate-500 mb-4">Arqueo y control de gaveta de dinero.</p>
 
@@ -1310,7 +1384,7 @@ export default function NativeWebPosPage() {
       {/* 6. Modal de Confirmación de Cancelar Venta [F9] */}
       {activeModal === 'CLEAR_CONFIRM' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-2">¿Cancelar Venta Actual? [F9]</h3>
             <p className="text-xs text-slate-500 mb-5">
               Se vaciarán los {cart.length} artículos del carrito. Esta acción no se puede deshacer.
@@ -1341,7 +1415,7 @@ export default function NativeWebPosPage() {
       {/* 7. Modal de Cobro / Pasarela de Pago [F12] */}
       {activeModal === 'CHECKOUT' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-black text-slate-900">Pasarela de Cobro [F12]</h3>
@@ -1501,7 +1575,7 @@ export default function NativeWebPosPage() {
       {/* 8. Modal de PIN de Supervisor para Anulaciones */}
       {activeModal === 'PIN_AUTH' && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-1">Autorización de Supervisor</h3>
             <p className="text-xs text-slate-500 mb-4">
               Ingresa el PIN de seguridad para anular o remover este artículo de la venta.
@@ -1560,7 +1634,7 @@ export default function NativeWebPosPage() {
       {/* 9. Modal de Recibo Térmico al Completar Venta */}
       {activeModal === 'RECEIPT' && lastSaleReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 shadow-2xl font-mono text-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto font-mono text-xs">
             <div className="text-center mb-3">
               <h2 className="font-black text-sm uppercase">COMPROBANTE DE VENTA</h2>
               <p className="text-[10px] text-slate-500">Cloud POS Terminal</p>

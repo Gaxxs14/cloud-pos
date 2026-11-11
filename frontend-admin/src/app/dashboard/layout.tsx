@@ -250,7 +250,7 @@ export default function DashboardLayout({
 
       {/* Docked Sidebar - Sleek Glassmorphism Obsidian Theme */}
       <aside
-        className={`fixed md:sticky top-0 left-0 h-screen w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 border-r border-slate-800/80 flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:sticky top-0 left-0 h-[100dvh] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 border-r border-slate-800/80 flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         } shadow-2xl`}
       >
@@ -392,7 +392,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-h-screen bg-slate-100/50">
         
         {/* Top Header */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/90 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 print:hidden shadow-xs">
+        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/90 h-16 flex items-center justify-between px-3 sm:px-4 md:px-8 sticky top-0 z-30 print:hidden shadow-xs">
           <div className="flex items-center gap-3">
             {/* Mobile Menu Hamburger */}
             <button
@@ -447,7 +447,13 @@ export default function DashboardLayout({
         </header>
 
         {/* Dynamic page content */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+        <main
+          className={`flex-1 w-full ${
+            pathname === '/dashboard/pos'
+              ? 'p-0 flex flex-col overflow-hidden max-w-none'
+              : 'p-3 sm:p-5 md:p-8 overflow-y-auto max-w-7xl mx-auto'
+          }`}
+        >
           {children}
         </main>
       </div>

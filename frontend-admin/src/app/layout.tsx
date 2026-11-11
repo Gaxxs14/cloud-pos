@@ -1,9 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cloud POS - Panel Administrador",
-  description: "Sistema Cloud POS de administración de inventarios y cajas",
+  title: "Cloud POS - Sistema Integral",
+  description: "Sistema Cloud POS de administración de inventarios, cajas y facturación",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
