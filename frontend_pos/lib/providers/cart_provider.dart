@@ -162,19 +162,28 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkout(String paymentMethod, String? customerId, [String? warehouseId]) async {
+  Future<void> checkout(
+    String paymentMethod,
+    String? customerId, [
+    String? warehouseId,
+    Map<String, dynamic>? splitDetails,
+    double? igtfAmount,
+  ]) async {
     if (_items.isEmpty) return;
 
     _isLoading = true;
     notifyListeners();
 
+    final finalTotal = totalAmount + (igtfAmount ?? 0.0);
     final payload = {
       'paymentMethod': paymentMethod,
       'customerId': customerId,
       'warehouseId': warehouseId,
-      'totalAmount': totalAmount,
+      'totalAmount': finalTotal,
       'taxAmount': totalAmount * 0.16,
+      'igtfAmount': igtfAmount ?? 0.0,
       'discountAmount': 0.0,
+      if (splitDetails != null) 'splitDetails': splitDetails,
       'items': _items.map((item) => {
         'productId': item.productId,
         'quantity': item.quantity.toDouble(),

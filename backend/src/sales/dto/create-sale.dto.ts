@@ -21,6 +21,27 @@ export class SaleItemDto {
   discount?: number;
 }
 
+export class SplitPaymentDetailsDto {
+  @IsNumber({}, { message: 'El monto en efectivo debe ser un número' })
+  @IsOptional()
+  @Min(0)
+  cashAmount?: number;
+
+  @IsNumber({}, { message: 'El monto en tarjeta debe ser un número' })
+  @IsOptional()
+  @Min(0)
+  cardAmount?: number;
+
+  @IsNumber({}, { message: 'El monto en transferencia debe ser un número' })
+  @IsOptional()
+  @Min(0)
+  transferAmount?: number;
+
+  @IsString()
+  @IsOptional()
+  reference?: string;
+}
+
 export class CreateSaleDto {
   @IsString({ message: 'El ID del cliente debe ser un texto' })
   @IsOptional()
@@ -56,6 +77,11 @@ export class CreateSaleDto {
 
   @IsEnum(PaymentMethod, { message: 'El método de pago no es válido' })
   paymentMethod: PaymentMethod;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SplitPaymentDetailsDto)
+  splitDetails?: SplitPaymentDetailsDto;
 
   @IsArray({ message: 'Los artículos vendidos deben estar en una lista' })
   @IsNotEmpty({ message: 'La lista de artículos no puede estar vacía' })

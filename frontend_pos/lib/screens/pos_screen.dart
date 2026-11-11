@@ -145,50 +145,74 @@ class _PosScreenState extends State<PosScreen> {
     final shiftProvider = Provider.of<ShiftProvider>(context, listen: false);
     String selectedPaymentMethod = 'CASH';
 
+    final receivedUsdCtrl = TextEditingController();
+    final splitCashCtrl = TextEditingController();
+    final splitCardBsCtrl = TextEditingController();
+    final splitTransferBsCtrl = TextEditingController();
+    final splitRefCtrl = TextEditingController();
+    final cardBatchCtrl = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final rate = _usdToBs > 1.0 ? _usdToBs : 1.0;
+            final totalUsd = cartProvider.totalAmount;
+            final totalBs = totalUsd * rate;
+
+            // Cálculos para Efectivo
+            final cashReceived = double.tryParse(receivedUsdCtrl.text.trim()) ?? totalUsd;
+            final cashChangeUsd = (cashReceived - totalUsd) > 0 ? (cashReceived - totalUsd) : 0.0;
+            final cashChangeBs = cashChangeUsd * rate;
+
+            // Cálculos para Split (Pago Mixto)
+            final sCash = double.tryParse(splitCashCtrl.text.trim()) ?? 0.0;
+            final sCardBs = double.tryParse(splitCardBsCtrl.text.trim()) ?? 0.0;
+            final sTransferBs = double.tryParse(splitTransferBsCtrl.text.trim()) ?? 0.0;
+
+            final sCardUsd = sCardBs / rate;
+            final sTransferUsd = sTransferBs / rate;
+            final splitCoveredUsd = sCash + sCardUsd + sTransferUsd;
+            final splitRemainingUsd = (totalUsd - splitCoveredUsd) > 0.009 ? (totalUsd - splitCoveredUsd) : 0.0;
+
             Widget buildPaymentCard(String method, String label, IconData icon) {
               final isSelected = selectedPaymentMethod == method;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setModalState(() {
-                      selectedPaymentMethod = method;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
-                        width: isSelected ? 2 : 1,
+              return GestureDetector(
+                onTap: () {
+                  setModalState(() {
+                    selectedPaymentMethod = method;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF64748B),
+                        size: 22,
                       ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          icon,
-                          color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF64748B),
-                          size: 24,
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF475569),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF475569),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -199,176 +223,538 @@ class _PosScreenState extends State<PosScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Completar Transacción',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520, maxHeight: 680),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'TOTAL A COBRAR',
+                            'Completar Cobro',
                             style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '\$${cartProvider.totalAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 28,
+                              fontSize: 18,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF4F46E5),
-                              letterSpacing: -0.5,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.2,
                             ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20, color: Color(0xFF94A3B8)),
+                            onPressed: () => Navigator.of(ctx).pop(),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
-                    const Text(
-                      'SELECCIONAR MÉTODO DE PAGO',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    Row(
-                      children: [
-                        buildPaymentCard('CASH', 'Efectivo', Icons.payments_outlined),
-                        const SizedBox(width: 8),
-                        buildPaymentCard('CARD', 'Tarjeta', Icons.credit_card_outlined),
-                        const SizedBox(width: 8),
-                        buildPaymentCard('TRANSFER', 'Transf.', Icons.account_balance_outlined),
-                        if (_selectedCustomer != null && _selectedCustomer['allowCredit'] == true) ...[
-                          const SizedBox(width: 8),
-                          buildPaymentCard('CREDIT', 'Fiado', Icons.money_off_csred_outlined),
-                        ],
-                      ],
-                    ),
-                    Builder(
-                      builder: (context) {
-                        final hasLimitError = selectedPaymentMethod == 'CREDIT' &&
-                            _selectedCustomer != null &&
-                            cartProvider.totalAmount > ((double.tryParse(_selectedCustomer['creditLimit']?.toString() ?? '') ?? 0.0) - (double.tryParse(_selectedCustomer['currentDebt']?.toString() ?? '') ?? 0.0));
-                        
-                        if (hasLimitError) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFDF2F2),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFFDE8E8)),
-                              ),
-                              child: const Row(
+                      // Tarjeta de Total a Cobrar en USD y Bs
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'TOTAL A COBRAR',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF64748B),
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '\$${totalUsd.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF4F46E5),
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (rate > 1.0)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 16),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Límite de crédito insuficiente para fiar al cliente.',
-                                      style: TextStyle(color: Color(0xFF9B1C1C), fontSize: 11, fontWeight: FontWeight.bold),
+                                  const Text(
+                                    'EQUIVALENTE BCV',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF64748B),
+                                      letterSpacing: 0.6,
                                     ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Bs. ${totalBs.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Tasa: 1\$ = Bs. ${rate.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF64748B),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          ),
-                          child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Builder(
-                          builder: (context) {
-                            final hasLimitError = selectedPaymentMethod == 'CREDIT' &&
-                                _selectedCustomer != null &&
-                                cartProvider.totalAmount > ((double.tryParse(_selectedCustomer['creditLimit']?.toString() ?? '') ?? 0.0) - (double.tryParse(_selectedCustomer['currentDebt']?.toString() ?? '') ?? 0.0));
-                            
-                            return ElevatedButton(
-                              onPressed: (cartProvider.isLoading || hasLimitError)
-                                  ? null
-                                  : () async {
-                                      try {
-                                        await cartProvider.checkout(selectedPaymentMethod, _selectedCustomer?['id'], shiftProvider.selectedWarehouseId);
-                                        await _loadCustomers();
-                                        if (context.mounted) {
-                                          Navigator.of(ctx).pop();
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                'Venta registrada con éxito',
-                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                              ),
-                                              backgroundColor: const Color(0xFF10B981),
-                                              behavior: SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              margin: const EdgeInsets.all(15),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Selector de Métodos de Pago
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            buildPaymentCard('CASH', 'Efectivo', Icons.payments_outlined),
+                            const SizedBox(width: 8),
+                            buildPaymentCard('CARD', 'Punto Bs.', Icons.credit_card_outlined),
+                            const SizedBox(width: 8),
+                            buildPaymentCard('TRANSFER', 'Pago Móvil', Icons.phone_android_rounded),
+                            const SizedBox(width: 8),
+                            buildPaymentCard('SPLIT', 'Pago Mixto', Icons.call_split_rounded),
+                            if (_selectedCustomer != null && _selectedCustomer['allowCredit'] == true) ...[
+                              const SizedBox(width: 8),
+                              buildPaymentCard('CREDIT', 'Fiado', Icons.money_off_csred_outlined),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Cuerpo interactivo según método
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ─── 1. EFECTIVO (CASH) CON CALCULADORA DE VUELTO ───
+                              if (selectedPaymentMethod == 'CASH') ...[
+                                const Text(
+                                  'Efectivo Recibido (\$):',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                ),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: receivedUsdCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  decoration: InputDecoration(
+                                    hintText: '\$${totalUsd.toStringAsFixed(2)}',
+                                    prefixIcon: const Icon(Icons.attach_money, color: Colors.green),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    isDense: true,
+                                  ),
+                                  onChanged: (_) => setModalState(() {}),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    ActionChip(
+                                      label: const Text('Exacto', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        receivedUsdCtrl.text = totalUsd.toStringAsFixed(2);
+                                        setModalState(() {});
+                                      },
+                                    ),
+                                    ...[5, 10, 20, 50, 100].where((d) => d >= totalUsd).take(4).map(
+                                      (d) => ActionChip(
+                                        label: Text('\$$d', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                        onPressed: () {
+                                          receivedUsdCtrl.text = d.toDouble().toStringAsFixed(2);
+                                          setModalState(() {});
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cashChangeUsd > 0 ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: cashChangeUsd > 0 ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            cashChangeUsd > 0 ? 'VUELTO A ENTREGAR' : 'ESTADO DEL PAGO',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: cashChangeUsd > 0 ? const Color(0xFF065F46) : const Color(0xFF64748B),
                                             ),
+                                          ),
+                                          Text(
+                                            cashChangeUsd > 0 ? '\$${cashChangeUsd.toStringAsFixed(2)} USD' : 'Pago Exacto',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                              color: cashChangeUsd > 0 ? const Color(0xFF047857) : const Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (cashChangeUsd > 0 && rate > 1.0)
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            const Text(
+                                              'O EN BOLÍVARES',
+                                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                                            ),
+                                            Text(
+                                              'Bs. ${cashChangeBs.toStringAsFixed(2)}',
+                                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF047857)),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              // ─── 2. PUNTO DE VENTA EN BOLÍVARES ───
+                              if (selectedPaymentMethod == 'CARD') ...[
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.credit_card_rounded, color: Color(0xFF2563EB), size: 18),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Cobro por Terminal Bancario (Punto de Venta)',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF)),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Monto exacto a ingresar en el punto: Bs. ${totalBs.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: cardBatchCtrl,
+                                  decoration: InputDecoration(
+                                    labelText: 'Nº de Lote o Aprobación (Opcional)',
+                                    prefixIcon: const Icon(Icons.receipt_long_rounded, size: 20),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ],
+
+                              // ─── 3. PAGO MÓVIL EN BOLÍVARES ───
+                              if (selectedPaymentMethod == 'TRANSFER') ...[
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.phone_android_rounded, color: Color(0xFF16A34A), size: 18),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Cobro por Pago Móvil / Transferencia',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Monto a transferir: Bs. ${totalBs.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF15803D)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: splitRefCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'Últimos 4 dígitos de Referencia (Opcional)',
+                                    prefixIcon: const Icon(Icons.tag_rounded, size: 20),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ],
+
+                              // ─── 4. PAGO MIXTO (SPLIT) ───
+                              if (selectedPaymentMethod == 'SPLIT') ...[
+                                const Text(
+                                  'Ingresa los montos combinados que entrega el cliente:',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: splitCashCtrl,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        decoration: InputDecoration(
+                                          labelText: 'Efectivo (\$ USD)',
+                                          prefixIcon: const Icon(Icons.attach_money, color: Colors.green, size: 18),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          isDense: true,
+                                        ),
+                                        onChanged: (_) => setModalState(() {}),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: splitCardBsCtrl,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        decoration: InputDecoration(
+                                          labelText: 'Punto (Bs.)',
+                                          prefixIcon: const Icon(Icons.credit_card, color: Colors.blue, size: 18),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          isDense: true,
+                                        ),
+                                        onChanged: (_) => setModalState(() {}),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: splitTransferBsCtrl,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        decoration: InputDecoration(
+                                          labelText: 'Pago Móvil (Bs.)',
+                                          prefixIcon: const Icon(Icons.phone_android, color: Colors.purple, size: 18),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          isDense: true,
+                                        ),
+                                        onChanged: (_) => setModalState(() {}),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: splitRefCtrl,
+                                        keyboardType: TextInputType.number,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        decoration: InputDecoration(
+                                          labelText: 'Referencia',
+                                          prefixIcon: const Icon(Icons.tag, size: 18),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          isDense: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: splitRemainingUsd <= 0 ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: splitRemainingUsd <= 0 ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'CUBIERTO HASTA AHORA',
+                                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
+                                          ),
+                                          Text(
+                                            '\$${splitCoveredUsd.toStringAsFixed(2)} USD',
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                          ),
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            splitRemainingUsd <= 0 ? 'LISTO PARA COBRAR' : 'RESTA POR PAGAR',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: splitRemainingUsd <= 0 ? const Color(0xFF047857) : const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                          Text(
+                                            splitRemainingUsd <= 0 ? '✓ Total Cubierto' : '\$${splitRemainingUsd.toStringAsFixed(2)} USD',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: splitRemainingUsd <= 0 ? const Color(0xFF047857) : const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              // ─── 5. CRÉDITO (FIADO) ───
+                              if (selectedPaymentMethod == 'CREDIT' && _selectedCustomer != null) ...[
+                                Builder(
+                                  builder: (context) {
+                                    final limit = double.tryParse(_selectedCustomer['creditLimit']?.toString() ?? '') ?? 0.0;
+                                    final debt = double.tryParse(_selectedCustomer['currentDebt']?.toString() ?? '') ?? 0.0;
+                                    final available = limit - debt;
+                                    final hasLimitError = totalUsd > available;
+
+                                    return Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: hasLimitError ? const Color(0xFFFDF2F2) : const Color(0xFFF0FDF4),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: hasLimitError ? const Color(0xFFFDE8E8) : const Color(0xFFBBF7D0)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            hasLimitError ? Icons.error_outline : Icons.check_circle_outline,
+                                            color: hasLimitError ? const Color(0xFFEF4444) : const Color(0xFF16A34A),
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              hasLimitError
+                                                  ? 'Límite insuficiente (Disponible: \$${available.toStringAsFixed(2)})'
+                                                  : 'Crédito disponible para ${_selectedCustomer['name']}: \$${available.toStringAsFixed(2)}',
+                                              style: TextStyle(
+                                                color: hasLimitError ? const Color(0xFF9B1C1C) : const Color(0xFF166534),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Botones Cancelar / Confirmar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF64748B),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            child: const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 8),
+                          Builder(
+                            builder: (context) {
+                              final limit = double.tryParse(_selectedCustomer?['creditLimit']?.toString() ?? '') ?? 0.0;
+                              final debt = double.tryParse(_selectedCustomer?['currentDebt']?.toString() ?? '') ?? 0.0;
+                              final hasCreditError = selectedPaymentMethod == 'CREDIT' && totalUsd > (limit - debt);
+                              final hasSplitError = selectedPaymentMethod == 'SPLIT' && splitRemainingUsd > 0.009;
+
+                              final isBlocked = cartProvider.isLoading || hasCreditError || hasSplitError;
+
+                              return ElevatedButton(
+                                onPressed: isBlocked
+                                    ? null
+                                    : () async {
+                                        try {
+                                          Map<String, dynamic>? splitData;
+                                          if (selectedPaymentMethod == 'SPLIT') {
+                                            splitData = {
+                                              'cashAmount': sCash,
+                                              'cardAmount': sCardUsd,
+                                              'transferAmount': sTransferUsd,
+                                              if (splitRefCtrl.text.isNotEmpty) 'reference': splitRefCtrl.text.trim(),
+                                            };
+                                          }
+
+                                          await cartProvider.checkout(
+                                            selectedPaymentMethod,
+                                            _selectedCustomer?['id'],
+                                            shiftProvider.selectedWarehouseId,
+                                            splitData,
                                           );
-                                          setState(() {
-                                            _selectedCustomer = null;
-                                            _currentMobileTab = 0;
-                                          });
-                                        }
-                                      } catch (e) {
-                                        final errStr = e.toString();
-                                        if (errStr.contains('offline_saved')) {
+
+                                          await _loadCustomers();
                                           if (context.mounted) {
                                             Navigator.of(ctx).pop();
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(
-                                                content: const Text(
-                                                  '⚠️ Sin Internet: Venta guardada localmente para sincronización posterior',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                content: Text(
+                                                  cashChangeUsd > 0
+                                                      ? 'Venta registrada con éxito. Entregar Vuelto: \$${cashChangeUsd.toStringAsFixed(2)} / Bs. ${cashChangeBs.toStringAsFixed(2)}'
+                                                      : 'Venta registrada con éxito',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                                 ),
-                                                backgroundColor: const Color(0xFFF59E0B), // Amber color
+                                                backgroundColor: const Color(0xFF10B981),
                                                 behavior: SnackBarBehavior.floating,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius: BorderRadius.circular(12),
@@ -381,40 +767,65 @@ class _PosScreenState extends State<PosScreen> {
                                               _currentMobileTab = 0;
                                             });
                                           }
-                                        } else {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(errStr.replaceAll('Exception: ', '')),
-                                                backgroundColor: Colors.redAccent.shade700,
-                                              ),
-                                            );
+                                        } catch (e) {
+                                          final errStr = e.toString();
+                                          if (errStr.contains('offline_saved')) {
+                                            if (context.mounted) {
+                                              Navigator.of(ctx).pop();
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: const Text(
+                                                    '⚠️ Sin Internet: Venta guardada localmente para sincronización posterior',
+                                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                                  ),
+                                                  backgroundColor: const Color(0xFFF59E0B),
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  margin: const EdgeInsets.all(15),
+                                                ),
+                                              );
+                                              setState(() {
+                                                _selectedCustomer = null;
+                                                _currentMobileTab = 0;
+                                              });
+                                            }
+                                          } else {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(errStr.replaceAll('Exception: ', '')),
+                                                  backgroundColor: Colors.redAccent.shade700,
+                                                ),
+                                              );
+                                            }
                                           }
                                         }
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4F46E5),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                              ),
-                              child: cartProvider.isLoading
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text('Confirmar Cobro', style: TextStyle(fontWeight: FontWeight.bold)),
-                            );
-                          }
-                        ),
-                      ],
-                    ),
-                  ],
+                                child: cartProvider.isLoading
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : const Text('Confirmar Cobro', style: TextStyle(fontWeight: FontWeight.bold)),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

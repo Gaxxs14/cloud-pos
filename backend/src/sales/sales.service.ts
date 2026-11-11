@@ -174,20 +174,33 @@ export class SalesService {
         });
       }
 
-      // Incrementar el acumulador del turno según el método de pago
+      // Incrementar el acumulador del turno según el método de pago exacto
       // CREDIT no se acumula aquí porque no es efectivo recibido — es deuda del cliente
       const amount = Number(dto.totalAmount);
       if (dto.paymentMethod !== 'CREDIT') {
-        await tx.cashShift.update({
-          where: { id: activeShift.id },
-          data: {
-            cashSales:     dto.paymentMethod === 'CASH'     ? { increment: amount } : undefined,
-            cardSales:     dto.paymentMethod === 'CARD'     ? { increment: amount } : undefined,
-            transferSales: dto.paymentMethod === 'TRANSFER' ? { increment: amount } : undefined,
-            // SPLIT: por simplicidad, acumula en cashSales hasta implementar split multi-campo
-            ...(dto.paymentMethod === 'SPLIT' ? { cashSales: { increment: amount } } : {}),
-          },
-        });
+        if (dto.paymentMethod === 'SPLIT' && dto.splitDetails) {
+          const splitCash = Number(dto.splitDetails.cashAmount) || 0;
+          const splitCard = Number(dto.splitDetails.cardAmount) || 0;
+          const splitTransfer = Number(dto.splitDetails.transferAmount) || 0;
+
+          await tx.cashShift.update({
+            where: { id: activeShift.id },
+            data: {
+              cashSales: splitCash > 0 ? { increment: splitCash } : undefined,
+              cardSales: splitCard > 0 ? { increment: splitCard } : undefined,
+              transferSales: splitTransfer > 0 ? { increment: splitTransfer } : undefined,
+            },
+          });
+        } else {
+          await tx.cashShift.update({
+            where: { id: activeShift.id },
+            data: {
+              cashSales:     (dto.paymentMethod === 'CASH' || dto.paymentMethod === 'SPLIT') ? { increment: amount } : undefined,
+              cardSales:     dto.paymentMethod === 'CARD'     ? { increment: amount } : undefined,
+              transferSales: dto.paymentMethod === 'TRANSFER' ? { increment: amount } : undefined,
+            },
+          });
+        }
       }
 
       const saleItemsData = [];
