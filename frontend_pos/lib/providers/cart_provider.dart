@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 class CartItem {
   final String productId;
   final String name;
+  final String? skuBarcode;
   final double regularPrice;
   final double? wholesalePrice;
   final double? wholesaleMinQty;
@@ -14,6 +15,7 @@ class CartItem {
   CartItem({
     required this.productId,
     required this.name,
+    this.skuBarcode,
     required this.regularPrice,
     this.wholesalePrice,
     this.wholesaleMinQty,
@@ -34,13 +36,55 @@ class CartItem {
 class CartProvider with ChangeNotifier {
   List<dynamic> _products = [];
   final List<CartItem> _items = [];
+  final List<Map<String, dynamic>> _heldSales = [];
   bool _isLoading = false;
   int _pendingOfflineSalesCount = 0;
 
   List<dynamic> get products => _products;
   List<CartItem> get items => _items;
+  List<Map<String, dynamic>> get heldSales => _heldSales;
   bool get isLoading => _isLoading;
   int get pendingOfflineSalesCount => _pendingOfflineSalesCount;
+
+  void holdSale({dynamic customer}) {
+    if (_items.isEmpty) return;
+    _heldSales.add({
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'time': DateTime.now(),
+      'customer': customer,
+      'items': List<CartItem>.from(_items.map((i) => CartItem(
+        productId: i.productId,
+        name: i.name,
+        skuBarcode: i.skuBarcode,
+        regularPrice: i.regularPrice,
+        wholesalePrice: i.wholesalePrice,
+        wholesaleMinQty: i.wholesaleMinQty,
+        quantity: i.quantity,
+      ))),
+      'total': totalAmount,
+    });
+    _items.clear();
+    notifyListeners();
+  }
+
+  dynamic restoreHeldSale(int index) {
+    if (index >= 0 && index < _heldSales.length) {
+      final held = _heldSales.removeAt(index);
+      final List<CartItem> restoredItems = held['items'];
+      _items.clear();
+      _items.addAll(restoredItems);
+      notifyListeners();
+      return held['customer'];
+    }
+    return null;
+  }
+
+  void removeHeldSale(int index) {
+    if (index >= 0 && index < _heldSales.length) {
+      _heldSales.removeAt(index);
+      notifyListeners();
+    }
+  }
 
   double get totalAmount {
     return _items.fold(0.0, (sum, item) => sum + item.subtotal);
@@ -142,12 +186,15 @@ class CartProvider with ChangeNotifier {
     final wPrice = double.tryParse(product['wholesalePrice']?.toString() ?? '');
     final wMinQty = double.tryParse(product['wholesaleMinQty']?.toString() ?? '');
 
+    final barcode = product['skuBarcode'] ?? product['barcode'] ?? product['code'];
+
     if (existingIndex >= 0) {
       _items[existingIndex].quantity += qtyToAdd;
     } else {
       _items.add(CartItem(
         productId: product['id'],
         name: product['name'] ?? 'Producto',
+        skuBarcode: barcode?.toString(),
         regularPrice: sellPrice,
         wholesalePrice: wPrice,
         wholesaleMinQty: wMinQty,

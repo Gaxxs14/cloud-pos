@@ -109,7 +109,11 @@ export class WarehousesService {
         },
       },
       include: {
-        product: true,
+        product: {
+          include: {
+            category: true,
+          },
+        },
       },
       orderBy: {
         product: {
