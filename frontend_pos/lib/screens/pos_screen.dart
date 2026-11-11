@@ -6,7 +6,9 @@ import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shift_provider.dart';
 import '../services/api_service.dart';
+import '../services/thermal_receipt_service.dart';
 import '../widgets/barcode_scanner_dialog.dart';
+import '../widgets/receipt_preview_dialog.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -502,6 +504,20 @@ class _PosScreenState extends State<PosScreen> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF4F46E5)),
+                ),
+                title: const Text('Reimprimir Último Ticket', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Generar formato térmico del último ticket'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showLastReceiptDialog(context);
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.power_settings_new, color: Color(0xFFF97316)),
                 ),
@@ -517,6 +533,60 @@ class _PosScreenState extends State<PosScreen> {
         );
       },
     );
+  }
+
+  void _showLastReceiptDialog(BuildContext context) async {
+    try {
+      final response = await ApiService.get('/sales');
+      final list = jsonDecode(response.body) as List;
+      if (list.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No hay ventas registradas aún')),
+          );
+        }
+        return;
+      }
+
+      final lastSale = list.first;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final shiftProvider = Provider.of<ShiftProvider>(context, listen: false);
+
+      final items = (lastSale['saleItems'] as List? ?? []).map((si) {
+        return {
+          'name': si['product']?['name'] ?? 'Producto',
+          'quantity': si['quantity'],
+          'unitPrice': si['unitPrice'],
+        };
+      }).toList();
+
+      final receiptText = ThermalReceiptService.generateSaleReceipt(
+        businessName: authProvider.tenant?['name'] ?? 'Mi Empresa POS',
+        branchName: shiftProvider.selectedBranchName ?? 'Sucursal Principal',
+        cashierName: authProvider.user?['name'] ?? 'Cajero',
+        items: items.isEmpty ? [
+          {'name': 'Venta #${lastSale['id'].toString().substring(0, 8)}', 'quantity': 1, 'unitPrice': lastSale['totalAmount']}
+        ] : items,
+        totalAmount: double.tryParse(lastSale['totalAmount']?.toString() ?? '0') ?? 0.0,
+        paymentMethod: lastSale['paymentMethod'] ?? 'EFECTIVO',
+        usdToBs: _usdToBs,
+        customerName: lastSale['customer']?['name'],
+        customerTaxId: lastSale['customer']?['taxId'],
+      );
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => ReceiptPreviewDialog(receiptText: receiptText),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al obtener último ticket: $e')),
+        );
+      }
+    }
   }
 
   // Modal para agregar una Transacción de Caja (Entrada / Salida)
