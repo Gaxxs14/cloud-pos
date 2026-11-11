@@ -254,22 +254,15 @@ export default function DashboardLayout({
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         } shadow-2xl`}
       >
-        {/* Glow Accent Top Effect */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-
         {/* Brand Logo Header */}
-        <div className="p-5 pb-4 border-b border-slate-800/60 flex items-center justify-between">
+        <div className="p-5 pb-4 border-b border-slate-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 ring-1 ring-white/20 transform hover:rotate-3 transition duration-200">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-600/30 ring-1 ring-white/10">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                 </svg>
               </div>
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-slate-950"></span>
-              </span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
@@ -416,23 +409,10 @@ export default function DashboardLayout({
           </div>
           
           <div className="flex items-center gap-3 md:gap-4">
-            {/* Direct Link to Launch POS Terminal */}
-            <Link
-              href="/dashboard/pos"
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-500 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-              title="Abrir terminal de caja y punto de venta para escritorio"
-            >
-              <svg className="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span className="hidden sm:inline">Punto de Venta</span>
-              <span className="sm:hidden">POS</span>
-            </Link>
-
             {/* Live Status indicator */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs font-bold shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Sistema Operativo</span>
+              <span>Sistema en Línea</span>
             </div>
 
             <div className="hidden sm:flex flex-col text-right">

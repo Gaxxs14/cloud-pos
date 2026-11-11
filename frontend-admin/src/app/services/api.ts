@@ -1,5 +1,9 @@
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cloud-pos-13ld.onrender.com';
 
+// Cache en memoria para respuestas GET rápidas (SWR)
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 1000; // 60 segundos de validez
+
 function getHeaders(): HeadersInit {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -36,15 +40,26 @@ async function handleResponse(response: Response) {
 }
 
 export const api = {
-  get: async (endpoint: string) => {
+  get: async (endpoint: string, options?: { force?: boolean }) => {
+    const now = Date.now();
+    const cached = apiCache.get(endpoint);
+    // Si tenemos datos en caché y no se forza la recarga, retornar inmediatamente
+    if (!options?.force && cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'GET',
       headers: getHeaders(),
     });
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    apiCache.set(endpoint, { data, timestamp: now });
+    return data;
   },
 
   post: async (endpoint: string, body: any) => {
+    // Las mutaciones invalidan el caché para asegurar datos frescos
+    apiCache.clear();
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: getHeaders(),
@@ -54,6 +69,7 @@ export const api = {
   },
 
   put: async (endpoint: string, body: any) => {
+    apiCache.clear();
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -63,11 +79,16 @@ export const api = {
   },
 
   delete: async (endpoint: string) => {
+    apiCache.clear();
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
     return handleResponse(response);
+  },
+
+  invalidateCache: () => {
+    apiCache.clear();
   },
 
   setToken: (token: string | null) => {

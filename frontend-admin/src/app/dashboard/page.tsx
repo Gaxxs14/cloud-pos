@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import api from '../services/api';
 
 export default function DashboardPage() {
@@ -71,19 +70,30 @@ export default function DashboardPage() {
   const averageTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
   
   const lowStockProducts = products.filter(
-    (p) => parseFloat(p.stock) <= parseFloat(p.minStock)
+    (p) => parseFloat(p.stock) <= parseFloat(p.minStock || 5)
   );
 
-  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-  const simulatedSales = [120.0, 240.5, 190.0, 480.0, 310.0, 650.0, totalSales > 0 ? totalSales : 400.0];
-  const maxSimulated = Math.max(...simulatedSales);
+  // Calcular ventas reales de los últimos 7 días
+  const last7Days: { label: string; dateStr: string; total: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const label = dayNames[d.getDay()];
+    const dayTotal = sales
+      .filter((s) => s.createdAt && s.createdAt.startsWith(dateStr))
+      .reduce((sum, s) => sum + parseFloat(s.totalAmount || 0), 0);
+    last7Days.push({ label, dateStr, total: dayTotal });
+  }
+
+  const maxVal = Math.max(...last7Days.map((d) => d.total), 10);
   const chartHeight = 120;
   const chartWidth = 500;
-  
-  const points = simulatedSales.map((val, idx) => {
-    const x = (idx / (daysOfWeek.length - 1)) * (chartWidth - 40) + 20;
-    const y = chartHeight - ((val / maxSimulated) * (chartHeight - 35) + 15);
-    return { x, y, val };
+  const points = last7Days.map((d, idx) => {
+    const x = (idx / (last7Days.length - 1)) * (chartWidth - 50) + 25;
+    const y = chartHeight - ((d.total / maxVal) * (chartHeight - 40) + 20);
+    return { x, y, val: d.total, label: d.label };
   });
 
   const pathD = points.reduce((acc, p, idx) => {
@@ -91,124 +101,130 @@ export default function DashboardPage() {
   }, '');
 
   return (
-    <div className="space-y-6 font-sans text-sm text-slate-650">
+    <div className="space-y-6 font-sans text-sm text-slate-700">
       
       {/* Title */}
-      <div className="flex justify-between items-center pb-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Vista General</h1>
-          <p className="text-slate-400 font-semibold text-xs mt-0.5">Indicadores clave de ingresos, transacciones y alertas de inventario.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Vista General del Negocio</h1>
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Indicadores clave de ingresos, transacciones y alertas de inventario en tiempo real.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/pos"
-            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 text-xs flex items-center gap-1.5 transition"
+          <button
+            onClick={() => window.print()}
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl transition text-xs flex items-center gap-1.5 shadow-2xs"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-            ⚡ Punto de Venta
-          </Link>
-          <button className="px-3.5 py-2 bg-white border border-slate-205 text-slate-700 font-bold rounded-xl transition text-xs flex items-center gap-1.5 shadow-sm">
             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            Exportar XLS
+            Imprimir Reporte
           </button>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Total Sales */}
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-between group">
+        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition duration-200 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider block">Venta Total</span>
-            <span className="text-2xl font-black text-slate-900 block group-hover:text-indigo-600 transition-colors">${totalSales.toFixed(2)}</span>
-            <span className="text-[10px] text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">+14.8% hoy</span>
+            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Venta Total</span>
+            <span className="text-2xl font-black text-slate-900 block">${totalSales.toFixed(2)}</span>
+            <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md inline-block">
+              Ingresos acumulados
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200/60 flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V15" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V15" />
             </svg>
           </div>
         </div>
 
         {/* Card 2: Transactions */}
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-between group">
+        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition duration-200 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider block">Transacciones</span>
-            <span className="text-2xl font-black text-slate-900 block group-hover:text-indigo-600 transition-colors">{totalTransactions}</span>
-            <span className="text-[10px] text-indigo-600 font-extrabold bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-1">Cajeros activos</span>
+            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Transacciones</span>
+            <span className="text-2xl font-black text-slate-900 block">{totalTransactions}</span>
+            <span className="text-[11px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded-md inline-block">
+              Ventas procesadas
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200/60 flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </div>
         </div>
 
         {/* Card 3: Average Ticket */}
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-between group">
+        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition duration-200 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider block">Ticket Promedio</span>
-            <span className="text-2xl font-black text-slate-900 block group-hover:text-indigo-600 transition-colors">${averageTicket.toFixed(2)}</span>
-            <span className="text-[10px] text-blue-600 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1">Por cliente</span>
+            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Ticket Promedio</span>
+            <span className="text-2xl font-black text-slate-900 block">${averageTicket.toFixed(2)}</span>
+            <span className="text-[11px] text-sky-700 font-bold bg-sky-50 px-2 py-0.5 rounded-md inline-block">
+              Por compra
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 ring-1 ring-sky-200/60 flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
         </div>
 
         {/* Card 4: Low Stock Alert */}
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-between group">
+        <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition duration-200 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider block">Bajo Stock</span>
+            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">Bajo Stock</span>
             <span className="text-2xl font-black text-rose-600 block">{lowStockProducts.length}</span>
-            <span className="text-[10px] text-rose-600 font-extrabold bg-rose-50 px-2 py-0.5 rounded-full inline-block mt-1">Reponer pronto</span>
+            <span className="text-[11px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded-md inline-block">
+              {lowStockProducts.length > 0 ? 'Requiere reposición' : 'Stock óptimo'}
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/20 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-200/60 flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
         </div>
       </div>
 
       {/* SVG Chart Section */}
-      <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm">
+      <div className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-2xl shadow-2xs">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse" />
-            Tendencia Semanal de Ingresos
-          </h3>
-          <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-            Últimos 7 días
+          <div>
+            <h3 className="text-sm font-black text-slate-900 tracking-tight">
+              Ingresos de los Últimos 7 Días
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">Comportamiento diario de las ventas registradas</p>
+          </div>
+          <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-1 rounded-lg">
+            Semana en curso
           </span>
         </div>
 
-        <div className="w-full overflow-hidden flex flex-col items-center">
+        <div className="w-full overflow-hidden flex flex-col items-center pt-2">
           <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full max-w-[800px] h-[130px]">
             <defs>
               <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.2" />
                 <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
               </linearGradient>
             </defs>
             
-            <line x1="20" y1="15" x2={chartWidth - 20} y2="15" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-            <line x1="20" y1="55" x2={chartWidth - 20} y2="55" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-            <line x1="20" y1="95" x2={chartWidth - 20} y2="95" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+            <line x1="20" y1="20" x2={chartWidth - 20} y2="20" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1="20" y1="60" x2={chartWidth - 20} y2="60" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+            <line x1="20" y1="100" x2={chartWidth - 20} y2="100" stroke="#f1f5f9" strokeWidth="1" />
 
-            <path d={`${pathD} L ${points[points.length - 1].x} 115 L ${points[0].x} 115 Z`} fill="url(#chartGradient)" />
-            <path d={pathD} fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={`${pathD} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`} fill="url(#chartGradient)" />
+            <path d={pathD} fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
             {/* Circles */}
             {points.map((p, idx) => (
               <g key={idx}>
-                <circle cx={p.x} cy={p.y} r="5" fill="#ffffff" stroke="#4f46e5" strokeWidth="2.5" className="hover:r-7 transition-all cursor-pointer" />
-                <text x={p.x} y={p.y - 10} textAnchor="middle" className="text-[9px] font-black fill-slate-800">
+                <circle cx={p.x} cy={p.y} r="4.5" fill="#ffffff" stroke="#4f46e5" strokeWidth="2" className="transition-all hover:r-6" />
+                <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px] font-bold fill-slate-700">
                   ${p.val.toFixed(0)}
                 </text>
               </g>
@@ -216,9 +232,9 @@ export default function DashboardPage() {
           </svg>
 
           {/* Days */}
-          <div className="flex justify-between w-full max-w-[800px] px-6 mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            {daysOfWeek.map((day, idx) => (
-              <span key={idx} className="hover:text-indigo-600 transition-colors cursor-pointer">{day}</span>
+          <div className="flex justify-between w-full max-w-[800px] px-6 mt-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            {last7Days.map((d, idx) => (
+              <span key={idx}>{d.label}</span>
             ))}
           </div>
         </div>

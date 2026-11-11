@@ -74,13 +74,6 @@ export default function ShiftsPage() {
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Control de Cajas y Turnos</h1>
           <p className="text-slate-500 text-xs mt-1 font-medium">Supervisa aperturas, cierres de caja, arqueos y diferencias en efectivo de tus cajeros.</p>
         </div>
-        <Link
-          href="/dashboard/pos"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 text-xs transition"
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-          ⚡ Abrir Terminal de Caja en Vivo
-        </Link>
       </div>
       <p className="text-slate-400 font-semibold text-xs">Monitorea y audita los turnos de caja de los cajeros en tiempo real, controlando fondos y detectando faltantes de dinero.</p>
 
