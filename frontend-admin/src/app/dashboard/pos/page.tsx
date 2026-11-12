@@ -1634,7 +1634,7 @@ export default function NativeWebPosPage() {
       {/* 9. Modal de Recibo Térmico al Completar Venta */}
       {activeModal === 'RECEIPT' && lastSaleReceipt && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto font-mono text-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto font-mono text-xs printable-receipt">
             <div className="text-center mb-3">
               <h2 className="font-black text-sm uppercase">COMPROBANTE DE VENTA</h2>
               <p className="text-[10px] text-slate-500">Cloud POS Terminal</p>
@@ -1667,7 +1667,7 @@ export default function NativeWebPosPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 print:hidden">
               <button
                 onClick={() => window.print()}
                 className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg"

@@ -200,9 +200,9 @@ export default function SalesPage() {
       {/* Ticket Details Modal Dialog */}
       {isDetailOpen && (
         <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition duration-150">
-          <div className="relative bg-white border border-slate-200 rounded-3xl shadow-lg w-full max-w-md p-8 flex flex-col max-h-[85vh]">
+          <div className="relative bg-white border border-slate-200 rounded-3xl shadow-lg w-full max-w-md p-6 sm:p-8 flex flex-col max-h-[85vh] printable-receipt">
             
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex justify-between items-center mb-5 print:hidden">
               <h3 className="text-lg font-black text-slate-900">Detalle de Ticket</h3>
               <button
                 onClick={() => setIsDetailOpen(false)}
@@ -263,10 +263,20 @@ export default function SalesPage() {
                 </div>
 
                 {/* Total breakdowns */}
-                  <div className="flex justify-between font-black text-lg text-slate-900 pt-2.5 border-t border-slate-200">
-                    <span>Total:</span>
-                    <span className="text-indigo-650">${parseFloat(selectedSale.totalAmount).toFixed(2)}</span>
-                  </div>
+                <div className="flex justify-between font-black text-lg text-slate-900 pt-2.5 border-t border-slate-200">
+                  <span>Total:</span>
+                  <span className="text-indigo-650">${parseFloat(selectedSale.totalAmount).toFixed(2)}</span>
+                </div>
+
+                {/* Print Action */}
+                <div className="pt-3 print:hidden">
+                  <button
+                    onClick={() => window.print()}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition"
+                  >
+                    🖨️ Reimprimir Comprobante Térmico
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="text-center py-6 text-slate-400">Error al cargar datos.</div>
