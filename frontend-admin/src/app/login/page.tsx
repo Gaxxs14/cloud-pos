@@ -15,8 +15,12 @@ export default function LoginPage() {
   useEffect(() => {
     const token = api.getToken();
     const { user } = api.getSession();
-    if (token && user && user.role !== 'CASHIER') {
-      router.push('/dashboard');
+    if (token && user) {
+      if (user.role === 'CASHIER') {
+        router.push('/dashboard/pos');
+      } else {
+        router.push('/dashboard');
+      }
     }
   }, [router]);
 
@@ -32,13 +36,10 @@ export default function LoginPage() {
       api.saveSession(response.user, response.tenant);
       
       if (response.user.role === 'CASHIER') {
-        api.setToken(null);
-        setError('Acceso denegado: los cajeros deben usar la aplicación terminal.');
-        setLoading(false);
-        return;
+        router.push('/dashboard/pos');
+      } else {
+        router.push('/dashboard');
       }
-
-      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
       setLoading(false);

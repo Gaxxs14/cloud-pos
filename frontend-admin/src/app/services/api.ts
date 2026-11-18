@@ -32,11 +32,15 @@ async function handleResponse(response: Response) {
     } catch (_) {}
     throw new Error(errorMessage);
   }
-  // 204 No Content (ej. DELETE exitoso) — no tiene cuerpo JSON
+  // 204 No Content (ej. DELETE exitoso) o cuerpo vacío (ej. GET /shifts/active sin turno)
   if (response.status === 204) {
     return null;
   }
-  return response.json();
+  const text = await response.text();
+  if (!text || !text.trim()) {
+    return null;
+  }
+  return JSON.parse(text);
 }
 
 export const api = {

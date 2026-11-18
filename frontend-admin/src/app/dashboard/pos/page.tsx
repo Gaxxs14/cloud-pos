@@ -75,9 +75,19 @@ export default function NativeWebPosPage() {
   const [txDescription, setTxDescription] = useState('');
   const [supervisorPin, setSupervisorPin] = useState('');
   const [pinPendingAction, setPinPendingAction] = useState<(() => void) | null>(null);
+  const [shiftSummary, setShiftSummary] = useState<any | null>(null);
+  const [closingShiftView, setClosingShiftView] = useState(false);
+  const [declaredUsd, setDeclaredUsd] = useState('');
+  const [declaredBs, setDeclaredBs] = useState('');
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // Estados de Checkout
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'PAGO_MOVIL' | 'SPLIT'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'CREDIT' | 'SPLIT'>('CASH');
   const [receivedUsd, setReceivedUsd] = useState('');
   const [splitCashUsd, setSplitCashUsd] = useState('');
   const [splitCardBs, setSplitCardBs] = useState('');
@@ -93,7 +103,7 @@ export default function NativeWebPosPage() {
     try {
       setLoading(true);
       const [rateData, branchesData, custData] = await Promise.all([
-        api.get('/exchange-rates/current').catch(() => ({ usdToBs: 1 })),
+        api.get('/exchange-rates/current', { force: true }).catch(() => ({ usdToBs: 1 })),
         api.get('/branches').catch(() => []),
         api.get('/customers').catch(() => []),
       ]);
@@ -104,12 +114,25 @@ export default function NativeWebPosPage() {
       setBranches(branchesData);
       setCustomers(custData);
 
+      let defaultWhId = '';
+      if (branchesData && branchesData.length > 0) {
+        setSelectedBranchId(branchesData[0].id);
+        defaultWhId = branchesData[0].warehouses?.[0]?.id || '';
+        setSelectedWarehouseId(defaultWhId);
+      }
+
       // Verificar turno activo
       try {
-        const activeShiftData = await api.get('/shifts/active');
-        setShift(activeShiftData);
-        if (activeShiftData) {
-          await loadProducts(activeShiftData.warehouseId);
+        const activeShiftData = await api.get('/shifts/active', { force: true });
+        if (activeShiftData && activeShiftData.id) {
+          setShift(activeShiftData);
+          const matchedBranch =
+            branchesData.find((b: any) => b.id === activeShiftData.branchId) || branchesData[0];
+          const whId = matchedBranch?.warehouses?.[0]?.id || defaultWhId;
+          if (whId) setSelectedWarehouseId(whId);
+          await loadProducts(whId || undefined);
+        } else {
+          setShift(null);
         }
       } catch (_) {
         setShift(null);
@@ -125,26 +148,30 @@ export default function NativeWebPosPage() {
   const loadProducts = async (warehouseId?: string) => {
     try {
       if (warehouseId) {
-        const stockData = await api.get(`/warehouses/${warehouseId}/stock`);
-        const prods = stockData.map((item: any) => ({
-          ...item.product,
-          stock: parseFloat(item.stock) || 0,
-          sellPrice: parseFloat(item.product.sellPrice) || 0,
-          wholesalePrice: item.product.wholesalePrice ? parseFloat(item.product.wholesalePrice) : null,
-          wholesaleMinQty: item.product.wholesaleMinQty ? parseFloat(item.product.wholesaleMinQty) : null,
-        }));
-        setProducts(prods);
-      } else {
-        const prodData = await api.get('/products');
-        const prods = prodData.map((p: any) => ({
-          ...p,
-          stock: parseFloat(p.stock) || 0,
-          sellPrice: parseFloat(p.sellPrice) || 0,
-          wholesalePrice: p.wholesalePrice ? parseFloat(p.wholesalePrice) : null,
-          wholesaleMinQty: p.wholesaleMinQty ? parseFloat(p.wholesaleMinQty) : null,
-        }));
-        setProducts(prods);
+        const stockData = await api.get(`/warehouses/${warehouseId}/stock`, { force: true });
+        if (Array.isArray(stockData) && stockData.length > 0) {
+          const prods = stockData
+            .filter((item: any) => item.product && item.product.isActive !== false)
+            .map((item: any) => ({
+              ...item.product,
+              stock: parseFloat(item.stock) || 0,
+              sellPrice: parseFloat(item.product.sellPrice) || 0,
+              wholesalePrice: item.product.wholesalePrice ? parseFloat(item.product.wholesalePrice) : null,
+              wholesaleMinQty: item.product.wholesaleMinQty ? parseFloat(item.product.wholesaleMinQty) : null,
+            }));
+          setProducts(prods);
+          return;
+        }
       }
+      const prodData = await api.get('/products', { force: true });
+      const prods = (prodData || []).map((p: any) => ({
+        ...p,
+        stock: parseFloat(p.stock) || 0,
+        sellPrice: parseFloat(p.sellPrice) || 0,
+        wholesalePrice: p.wholesalePrice ? parseFloat(p.wholesalePrice) : null,
+        wholesaleMinQty: p.wholesaleMinQty ? parseFloat(p.wholesaleMinQty) : null,
+      }));
+      setProducts(prods);
     } catch (e) {
       console.error('Error al cargar productos:', e);
     }
@@ -310,7 +337,7 @@ export default function NativeWebPosPage() {
       addToCart(match);
       setSearchQuery('');
     } else {
-      alert(`Código o producto "${q}" no encontrado en catálogo.`);
+      showToast(`Código o producto "${q}" no encontrado en catálogo.`, 'error');
     }
   };
 
@@ -325,8 +352,9 @@ export default function NativeWebPosPage() {
       });
       setShift(newShift);
       await loadProducts(selectedWarehouseId || undefined);
+      showToast('Turno de caja abierto exitosamente');
     } catch (err: any) {
-      alert(err.message || 'Error al abrir caja');
+      showToast(err.message || 'Error al abrir caja', 'error');
     }
   };
 
@@ -334,7 +362,7 @@ export default function NativeWebPosPage() {
   const handleCashTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(txAmount);
-    if (!amt || amt <= 0) return alert('Ingresa un monto válido');
+    if (!amt || amt <= 0) return showToast('Ingresa un monto válido', 'error');
 
     try {
       await api.post('/shifts/transaction', {
@@ -345,15 +373,18 @@ export default function NativeWebPosPage() {
       setActiveModal(null);
       setTxAmount('');
       setTxDescription('');
-      alert('Movimiento de caja registrado exitosamente');
+      showToast('Movimiento de caja registrado exitosamente');
     } catch (err: any) {
-      alert(err.message || 'Error al registrar movimiento');
+      showToast(err.message || 'Error al registrar movimiento', 'error');
     }
   };
 
   // Cobrar Venta (Checkout)
   const handleCheckoutSubmit = async () => {
     if (cart.length === 0) return;
+    if (paymentMethod === 'CREDIT' && !selectedCustomer) {
+      return showToast('Debes seleccionar un cliente [F3] para registrar una venta a crédito.', 'error');
+    }
     setIsProcessingSale(true);
 
     try {
@@ -366,17 +397,19 @@ export default function NativeWebPosPage() {
       const payload: any = {
         paymentMethod,
         customerId: selectedCustomer?.id || undefined,
-        warehouseId: shift?.warehouseId || undefined,
-        totalAmount: totalUsd,
+        warehouseId: selectedWarehouseId || shift?.warehouseId || undefined,
+        totalAmount: Number(totalUsd.toFixed(2)),
+        taxAmount: Number(taxUsd.toFixed(2)),
         items: itemsPayload,
       };
 
       if (paymentMethod === 'SPLIT') {
+        const rate = usdToBs > 0 ? usdToBs : 1;
         payload.splitDetails = {
-          cashUsd: parseFloat(splitCashUsd) || 0,
-          cardBs: parseFloat(splitCardBs) || 0,
-          mobilePayBs: parseFloat(splitMobilePayBs) || 0,
-          mobilePayRef: splitMobilePayRef || undefined,
+          cashAmount: Number((parseFloat(splitCashUsd) || 0).toFixed(2)),
+          cardAmount: Number(((parseFloat(splitCardBs) || 0) / rate).toFixed(2)),
+          transferAmount: Number(((parseFloat(splitMobilePayBs) || 0) / rate).toFixed(2)),
+          reference: splitMobilePayRef || undefined,
         };
       }
 
@@ -392,14 +425,15 @@ export default function NativeWebPosPage() {
         receivedUsd: parseFloat(receivedUsd) || totalUsd,
       });
 
-      // Limpiar venta
+      // Limpiar venta y recargar existencias actualizadas
       setCart([]);
       setSelectedCustomer(null);
       setIsProcessingSale(false);
       setActiveModal('RECEIPT');
+      loadProducts(selectedWarehouseId || undefined);
     } catch (err: any) {
       setIsProcessingSale(false);
-      alert(err.message || 'Error al procesar cobro');
+      showToast(err.message || 'Error al procesar cobro', 'error');
     }
   };
 
@@ -1309,70 +1343,177 @@ export default function NativeWebPosPage() {
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto">
             <h3 className="text-base font-black text-slate-900 mb-1">Gestión de Turno & Caja [F7]</h3>
-            <p className="text-xs text-slate-500 mb-4">Arqueo y control de gaveta de dinero.</p>
+            <p className="text-xs text-slate-500 mb-4">Arqueo en vivo y control de gaveta de dinero.</p>
 
-            <div className="space-y-2 mb-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const activeShiftData = await api.get('/shifts/active');
-                    alert(`Arqueo Teórico en vivo:\nEfectivo Esperado: $${activeShiftData.cashInRegister?.toFixed(2) || '0.00'}`);
-                  } catch (e: any) {
-                    alert(e.message);
-                  }
-                }}
-                className="w-full p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-black text-xs text-slate-900">Arqueo Teórico (Corte Parcial X)</div>
-                  <div className="text-[10px] text-slate-500">Ver acumulados en efectivo sin cerrar la caja</div>
-                </div>
-                <span className="text-slate-400">➔</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveModal(null);
-                  setTxType('IN');
-                  setActiveModal('CASH_TX');
-                }}
-                className="w-full p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-black text-xs text-slate-900">Ingreso / Retiro de Efectivo</div>
-                  <div className="text-[10px] text-slate-500">Registrar entradas extras o pagos menores</div>
-                </div>
-                <span className="text-slate-400">➔</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  const declared = prompt('Ingresa el dinero en efectivo contado en gaveta ($):');
-                  if (declared !== null) {
+            {!closingShiftView ? (
+              <div className="space-y-2.5 mb-4">
+                <button
+                  onClick={async () => {
                     try {
-                      await api.post('/shifts/close', {
-                        declaredBalance: parseFloat(declared) || 0,
-                      });
-                      alert('Turno de caja cerrado exitosamente.');
-                      setShift(null);
-                      setActiveModal(null);
+                      const activeShiftData = await api.get('/shifts/active', { force: true });
+                      if (activeShiftData) {
+                        setShiftSummary(activeShiftData);
+                      }
                     } catch (e: any) {
-                      alert(e.message);
+                      showToast(e.message || 'Error al consultar turno', 'error');
                     }
-                  }
-                }}
-                className="w-full p-3 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 text-left flex items-center justify-between text-rose-700"
-              >
+                  }}
+                  className="w-full p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 text-left flex items-center justify-between transition"
+                >
+                  <div>
+                    <div className="font-black text-xs text-slate-900">Arqueo Teórico (Corte Parcial X)</div>
+                    <div className="text-[10px] text-slate-500">Ver acumulados en efectivo y ventas sin cerrar la caja</div>
+                  </div>
+                  <span className="text-indigo-600 font-black">Ver ➔</span>
+                </button>
+
+                {shiftSummary && (
+                  <div className="p-3.5 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-1.5 text-xs">
+                    <div className="font-black text-indigo-950 uppercase text-[10px] tracking-wider pb-1 border-b border-indigo-200/70">
+                      Resumen de Turno en Vivo (Corte X)
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Fondo Inicial:</span>
+                      <span className="font-bold text-slate-900">${parseFloat(shiftSummary.openingBalance || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Ventas en Efectivo ($):</span>
+                      <span className="font-bold text-emerald-700">+${parseFloat(shiftSummary.cashSales || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Ventas Punto / Tarjeta:</span>
+                      <span className="font-bold text-slate-800">${parseFloat(shiftSummary.cardSales || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Ventas Pago Móvil / Transf.:</span>
+                      <span className="font-bold text-slate-800">${parseFloat(shiftSummary.transferSales || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Ingresos / Retiros Manuales:</span>
+                      <span className="font-bold text-slate-800">
+                        +${parseFloat(shiftSummary.cashIn || 0).toFixed(2)} / -${parseFloat(shiftSummary.cashOut || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="pt-1.5 border-t border-indigo-200/70 flex justify-between items-center font-black text-indigo-950">
+                      <span>Efectivo Esperado en Gaveta:</span>
+                      <span className="text-sm text-indigo-700">
+                        ${(
+                          parseFloat(shiftSummary.openingBalance || 0) +
+                          parseFloat(shiftSummary.cashSales || 0) +
+                          parseFloat(shiftSummary.cashIn || 0) -
+                          parseFloat(shiftSummary.cashOut || 0)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setShiftSummary(null);
+                    setActiveModal(null);
+                    setTxType('IN');
+                    setActiveModal('CASH_TX');
+                  }}
+                  className="w-full p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 text-left flex items-center justify-between transition"
+                >
+                  <div>
+                    <div className="font-black text-xs text-slate-900">Ingreso / Retiro de Efectivo [F4]</div>
+                    <div className="text-[10px] text-slate-500">Registrar entradas extras o pagos menores de caja</div>
+                  </div>
+                  <span className="text-slate-400">➔</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setDeclaredUsd('');
+                    setDeclaredBs('');
+                    setClosingShiftView(true);
+                  }}
+                  className="w-full p-3 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 text-left flex items-center justify-between text-rose-700 transition"
+                >
+                  <div>
+                    <div className="font-black text-xs">Cerrar Caja (Corte Final Z)</div>
+                    <div className="text-[10px] text-rose-500">Finalizar turno y declarar efectivo físico</div>
+                  </div>
+                  <span>➔</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 mb-4 p-3.5 bg-rose-50/40 border border-rose-200 rounded-xl">
+                <div className="font-black text-xs text-rose-900">Declaración de Cierre de Caja (Corte Z)</div>
+                <p className="text-[11px] text-slate-600">
+                  Cuenta el dinero físico en la gaveta e ingresa los montos para cerrar el turno:
+                </p>
                 <div>
-                  <div className="font-black text-xs">Cerrar Caja (Corte Final Z)</div>
-                  <div className="text-[10px] text-rose-500">Finalizar turno y declarar efectivo</div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Efectivo Físico en Dólares ($ USD):
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={declaredUsd}
+                    onChange={(e) => setDeclaredUsd(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-black text-slate-900 focus:outline-none focus:border-rose-500"
+                  />
                 </div>
-                <span>➔</span>
-              </button>
-            </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Efectivo Físico en Bolívares (Bs.):
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={declaredBs}
+                    onChange={(e) => setDeclaredBs(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-black text-slate-900 focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setClosingShiftView(false)}
+                    className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 font-bold text-xs rounded-xl"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const usd = parseFloat(declaredUsd) || 0;
+                      const bs = parseFloat(declaredBs) || 0;
+                      const totalDeclaredUsd = usd + (usdToBs > 0 ? bs / usdToBs : 0);
+                      try {
+                        await api.post('/shifts/close', {
+                          declaredBalance: Number(totalDeclaredUsd.toFixed(2)),
+                          declaredBalanceUsd: Number(usd.toFixed(2)),
+                          declaredBalanceBs: Number(bs.toFixed(2)),
+                        });
+                        showToast('Turno de caja cerrado exitosamente.');
+                        setClosingShiftView(false);
+                        setShiftSummary(null);
+                        setShift(null);
+                        setActiveModal(null);
+                      } catch (e: any) {
+                        showToast(e.message || 'Error al cerrar turno', 'error');
+                      }
+                    }}
+                    className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-sm"
+                  >
+                    Confirmar Cierre Z
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
-              onClick={() => setActiveModal(null)}
+              onClick={() => {
+                setClosingShiftView(false);
+                setShiftSummary(null);
+                setActiveModal(null);
+              }}
               className="w-full py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl"
             >
               Cerrar [Esc]
@@ -1430,12 +1571,13 @@ export default function NativeWebPosPage() {
             </div>
 
             {/* Selector de Método de Pago */}
-            <div className="grid grid-cols-4 gap-1.5 mb-4 text-xs font-bold">
+            <div className="grid grid-cols-5 gap-1.5 mb-4 text-[11px] font-bold">
               {[
                 { id: 'CASH', label: 'Efectivo $' },
                 { id: 'CARD', label: 'Punto Bs.' },
-                { id: 'PAGO_MOVIL', label: 'Pago Móvil' },
-                { id: 'SPLIT', label: 'Mixto / Split' },
+                { id: 'TRANSFER', label: 'Pago Móvil' },
+                { id: 'SPLIT', label: 'Mixto' },
+                { id: 'CREDIT', label: 'Crédito' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -1494,10 +1636,10 @@ export default function NativeWebPosPage() {
               </div>
             )}
 
-            {paymentMethod === 'PAGO_MOVIL' && (
+            {paymentMethod === 'TRANSFER' && (
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 mb-4 text-xs font-bold text-slate-700 space-y-2">
                 <div className="flex justify-between">
-                  <span>Monto exacto Pago Móvil:</span>
+                  <span>Monto exacto Pago Móvil / Transferencia:</span>
                   <span className="font-black text-slate-900">Bs. {totalBs.toFixed(2)}</span>
                 </div>
                 <div>
@@ -1509,6 +1651,21 @@ export default function NativeWebPosPage() {
                     onChange={(e) => setSplitMobilePayRef(e.target.value)}
                     className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold"
                   />
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === 'CREDIT' && (
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 mb-4 text-xs font-bold text-amber-900 space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Cliente Asignado:</span>
+                  <span className="font-black">
+                    {selectedCustomer ? selectedCustomer.name : '⚠️ Ninguno (Selecciona con [F3])'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cargo a Cuenta por Cobrar:</span>
+                  <span className="font-black">${totalUsd.toFixed(2)} USD</span>
                 </div>
               </div>
             )}
@@ -1591,7 +1748,7 @@ export default function NativeWebPosPage() {
                   setPinPendingAction(null);
                   setActiveModal(null);
                 } else {
-                  alert('PIN de supervisor incorrecto');
+                  showToast('PIN de supervisor incorrecto', 'error');
                 }
               }}
               className="space-y-3"
@@ -1682,6 +1839,20 @@ export default function NativeWebPosPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Notificación Toast Flotante */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-[60] px-4 py-3 rounded-xl shadow-2xl border text-xs font-black flex items-center gap-2 transition-all print:hidden ${
+            toast.type === 'success'
+              ? 'bg-emerald-950 text-emerald-200 border-emerald-700'
+              : 'bg-rose-950 text-rose-200 border-rose-700'
+          }`}
+        >
+          <span>{toast.type === 'success' ? '✓' : '⚠️'}</span>
+          <span>{toast.msg}</span>
         </div>
       )}
     </div>

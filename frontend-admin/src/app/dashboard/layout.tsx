@@ -26,6 +26,7 @@ export default function DashboardLayout({
   const [authorized, setAuthorized] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userRole, setUserRole] = useState('');
   const [tenantName, setTenantName] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -33,7 +34,7 @@ export default function DashboardLayout({
     const token = api.getToken();
     const { user, tenant } = api.getSession();
 
-    if (!token || !user || user.role === 'CASHIER') {
+    if (!token || !user) {
       api.setToken(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_user');
@@ -41,13 +42,21 @@ export default function DashboardLayout({
       }
       setAuthorized(false);
       router.push('/login');
-    } else {
-      setUserName(user.name || 'Administrador');
-      setUserEmail(user.email || 'admin@cloudpos.com');
-      setTenantName(tenant?.name || 'Mi Negocio');
-      setAuthorized(true);
+      return;
     }
-  }, [router]);
+
+    // Si el usuario es CAJERO, solo tiene permiso de estar en la Terminal de Caja (/dashboard/pos)
+    if (user.role === 'CASHIER' && pathname !== '/dashboard/pos') {
+      router.replace('/dashboard/pos');
+      return;
+    }
+
+    setUserName(user.name || (user.role === 'CASHIER' ? 'Cajero' : 'Administrador'));
+    setUserEmail(user.email || '');
+    setUserRole(user.role || 'OWNER');
+    setTenantName(tenant?.name || 'Mi Negocio');
+    setAuthorized(true);
+  }, [router, pathname]);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -236,179 +245,204 @@ export default function DashboardLayout({
 
   const allItems = navigationGroups.flatMap((group) => group.items);
   const currentTitle = allItems.find((item) => item.path === pathname)?.name || 'Panel de Control';
+  const isCashier = userRole === 'CASHIER';
 
   return (
     <div className="min-h-screen bg-slate-900/10 flex flex-col md:flex-row text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
       
-      {/* Mobile Backdrop Overlay */}
-      {isMobileMenuOpen && (
+      {/* Mobile Backdrop Overlay (Solo para Administrador) */}
+      {!isCashier && isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden transition-opacity"
         />
       )}
 
-      {/* Docked Sidebar - Sleek Glassmorphism Obsidian Theme */}
-      <aside
-        className={`fixed md:sticky top-0 left-0 h-[100dvh] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 border-r border-slate-800/80 flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } shadow-2xl`}
-      >
-        {/* Brand Logo Header */}
-        <div className="p-5 pb-4 border-b border-slate-800/80 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-600/30 ring-1 ring-white/10">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                </svg>
+      {/* Docked Sidebar - Exclusivo para Administradores y Gerentes (Oculto para Cajeros) */}
+      {!isCashier && (
+        <aside
+          className={`fixed md:sticky top-0 left-0 h-[100dvh] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300 border-r border-slate-800/80 flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          } shadow-2xl`}
+        >
+          {/* Brand Logo Header */}
+          <div className="p-5 pb-4 border-b border-slate-800/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-600/30 ring-1 ring-white/10">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                  </svg>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-base font-black tracking-tight text-white leading-none">Cloud POS</span>
-                <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  PRO
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-400 font-semibold tracking-wide truncate max-w-[150px] mt-1">
-                {tenantName}
-              </span>
-            </div>
-          </div>
-
-          {/* Close mobile button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Navigation Menu with Logical Categorized Groups */}
-        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-          {navigationGroups.map((group, groupIdx) => (
-            <div key={groupIdx} className="space-y-1">
-              <div className="px-3 pb-1.5 flex items-center justify-between">
-                <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
-                  {group.title}
-                </span>
-                <span className="h-px flex-1 ml-3 bg-slate-800/60" />
-              </div>
-
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold transition-all duration-200 text-xs tracking-wide ${
-                        isActive
-                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-white/20 translate-x-1'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60 hover:translate-x-1'
-                      }`}
-                    >
-                      {/* Active Indicator Bar */}
-                      {isActive && (
-                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-white shadow-sm" />
-                      )}
-
-                      <div className="flex items-center gap-3 truncate">
-                        <span
-                          className={`transition-all duration-200 ${
-                            isActive
-                              ? 'text-white transform scale-110'
-                              : 'text-slate-400 group-hover:text-indigo-400 group-hover:scale-110'
-                          }`}
-                        >
-                          {item.icon}
-                        </span>
-                        <span className="truncate">{item.name}</span>
-                      </div>
-
-                      {/* Optional Badge */}
-                      {item.badge && (
-                        <span
-                          className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                            isActive
-                              ? 'bg-white/20 text-white border-white/30'
-                              : item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* User Profile & Store Footer Card */}
-        <div className="p-3 border-t border-slate-800/70 bg-slate-950/80 backdrop-blur-md">
-          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 flex items-center justify-between shadow-inner">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-indigo-500/20 shrink-0 ring-1 ring-white/10">
-                {userName.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-black text-white truncate leading-tight">
-                  {userName}
-                </span>
-                <span className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">
-                  {userEmail}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-black tracking-tight text-white leading-none">Cloud POS</span>
+                  <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    PRO
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-semibold tracking-wide truncate max-w-[150px] mt-1">
+                  {tenantName}
                 </span>
               </div>
             </div>
 
-            {/* Logout Action Button */}
+            {/* Close mobile button */}
             <button
-              onClick={handleLogout}
-              title="Cerrar Sesión"
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-150 shrink-0 group"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
             >
-              <svg className="w-4 h-4 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-        </div>
-      </aside>
+
+          {/* Navigation Menu with Logical Categorized Groups */}
+          <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+            {navigationGroups.map((group, groupIdx) => (
+              <div key={groupIdx} className="space-y-1">
+                <div className="px-3 pb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+                    {group.title}
+                  </span>
+                  <span className="h-px flex-1 ml-3 bg-slate-800/60" />
+                </div>
+
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold transition-all duration-200 text-xs tracking-wide ${
+                          isActive
+                            ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-white/20 translate-x-1'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/60 hover:translate-x-1'
+                        }`}
+                      >
+                        {/* Active Indicator Bar */}
+                        {isActive && (
+                          <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-white shadow-sm" />
+                        )}
+
+                        <div className="flex items-center gap-3 truncate">
+                          <span
+                            className={`transition-all duration-200 ${
+                              isActive
+                                ? 'text-white transform scale-110'
+                                : 'text-slate-400 group-hover:text-indigo-400 group-hover:scale-110'
+                            }`}
+                          >
+                            {item.icon}
+                          </span>
+                          <span className="truncate">{item.name}</span>
+                        </div>
+
+                        {/* Optional Badge */}
+                        {item.badge && (
+                          <span
+                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                              isActive
+                                ? 'bg-white/20 text-white border-white/30'
+                                : item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          {/* User Profile & Store Footer Card */}
+          <div className="p-3 border-t border-slate-800/70 bg-slate-950/80 backdrop-blur-md">
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-indigo-500/20 shrink-0 ring-1 ring-white/10">
+                  {userName.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-black text-white truncate leading-tight">
+                    {userName}
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">
+                    {userEmail}
+                  </span>
+                </div>
+              </div>
+
+              {/* Logout Action Button */}
+              <button
+                onClick={handleLogout}
+                title="Cerrar Sesión"
+                className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-150 shrink-0 group"
+              >
+                <svg className="w-4 h-4 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen bg-slate-100/50">
         
         {/* Top Header */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/90 h-16 flex items-center justify-between px-3 sm:px-4 md:px-8 sticky top-0 z-30 print:hidden shadow-xs">
+        <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 h-16 flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-30 print:hidden shadow-xs">
           <div className="flex items-center gap-3">
-            {/* Mobile Menu Hamburger */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
-              aria-label="Abrir Menú"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {/* Mobile Menu Hamburger (Solo para Administrador) */}
+            {!isCashier && (
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
+                aria-label="Abrir Menú"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
 
-            {/* Breadcrumb / Title */}
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-block text-xs font-bold text-slate-400">Dashboard</span>
-              <span className="hidden sm:inline-block text-slate-300">/</span>
-              <h2 className="text-xs md:text-sm font-black text-slate-800 tracking-tight">
-                {currentTitle}
-              </h2>
-            </div>
+            {/* Si es Cajero: Mostrar Logo Cloud POS + Nombre del Negocio y Etiqueta Terminal */}
+            {isCashier ? (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-900 leading-none">Cloud POS</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      TERMINAL DE CAJA
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500 mt-0.5">{tenantName}</span>
+                </div>
+              </div>
+            ) : (
+              /* Breadcrumb / Title para Administrador */
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-block text-xs font-bold text-slate-400">Dashboard</span>
+                <span className="hidden sm:inline-block text-slate-300">/</span>
+                <h2 className="text-xs md:text-sm font-black text-slate-800 tracking-tight">
+                  {currentTitle}
+                </h2>
+              </div>
+            )}
           </div>
           
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2.5 md:gap-4">
             {/* Live Status indicator */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs font-bold shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -417,12 +451,32 @@ export default function DashboardLayout({
 
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs font-black text-slate-900">{userName}</span>
-              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Administrador</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                isCashier ? 'text-emerald-600' : 'text-indigo-600'
+              }`}>
+                {isCashier ? 'Cajero de Turno' : userRole === 'MANAGER' ? 'Gerente' : 'Administrador'}
+              </span>
             </div>
             
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-md shadow-indigo-500/20 ring-2 ring-white">
+            <div className={`w-9 h-9 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-sm ring-2 ring-white ${
+              isCashier
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600'
+            }`}>
               {userName.substring(0, 2).toUpperCase()}
             </div>
+
+            {/* Botón de Cerrar Sesión visible en la cabecera */}
+            <button
+              onClick={handleLogout}
+              title="Cerrar Sesión"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 text-xs font-bold transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">Salir</span>
+            </button>
           </div>
         </header>
 
