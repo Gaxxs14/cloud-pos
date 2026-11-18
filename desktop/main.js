@@ -39,10 +39,15 @@ function createWindow() {
   // Ocultar menú superior por defecto para apariencia 100% nativa
   Menu.setApplicationMenu(null);
 
-  // URL oficial en vivo en la nube
-  const POS_URL = 'https://cloud-pos-three.vercel.app/dashboard/pos';
+  // URL oficial en vivo en la nube (detecta automáticamente si es Cajero o Administrador)
+  const APP_URL = 'https://cloud-pos-three.vercel.app/login';
 
-  mainWindow.loadURL(POS_URL);
+  // Limpiar caché HTTP al iniciar para cargar siempre la última versión de la nube
+  mainWindow.webContents.session.clearCache().finally(() => {
+    mainWindow.loadURL(APP_URL, {
+      extraHeaders: 'pragma: no-cache\n',
+    });
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.maximize();
