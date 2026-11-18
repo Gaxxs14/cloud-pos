@@ -253,6 +253,7 @@ export default function NativeWebPosPage() {
   };
 
   const subtotalUsd = cart.reduce((sum, item) => sum + getItemSubtotal(item), 0);
+  const taxUsd = 0;
   const totalUsd = subtotalUsd;
   const totalBs = totalUsd * usdToBs;
 
