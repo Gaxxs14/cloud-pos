@@ -1,12 +1,11 @@
 {
-  "name": "cloud-pos-desktop",
+  "name": "cloud-pos-caja",
   "version": "1.0.0",
-  "description": "Cloud POS - Terminal de Ventas y Administración para Windows",
+  "appMode": "CAJA",
+  "description": "Cloud POS - Terminal de Caja (Punto de Venta)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis --x64",
     "dist:portable": "electron-builder --win portable --x64"
   },
   "author": "Cloud POS Team",
@@ -17,25 +16,20 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.cloudpos.desktop",
-    "productName": "Cloud POS",
+    "appId": "com.cloudpos.desktop.caja",
+    "productName": "Cloud POS - Caja",
     "copyright": "Copyright © 2026 Cloud POS",
     "directories": {
-      "output": "dist"
+      "output": "dist-caja"
     },
     "win": {
       "target": [
-        "nsis",
         "portable"
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon-caja.ico"
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Cloud POS"
+    "portable": {
+      "artifactName": "Cloud POS - Caja.exe"
     }
   }
 }

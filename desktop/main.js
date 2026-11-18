@@ -1,9 +1,13 @@
-const { app, BrowserWindow, globalShortcut, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, Menu } = require('electron');
 const path = require('path');
+const pkg = require('./package.json');
+
+const APP_MODE = pkg.appMode || 'CAJA'; // 'CAJA' o 'ADMIN'
+const IS_CAJA = APP_MODE === 'CAJA';
 
 let mainWindow = null;
 
-// Evitar múltiples instancias del Punto de Venta
+// Permitir que Admin y Caja corran simultáneamente, pero solo 1 instancia de cada uno
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -19,32 +23,41 @@ if (!gotTheLock) {
 }
 
 function createWindow() {
+  const iconFile = IS_CAJA ? 'icon-caja.png' : 'icon.png';
+  const windowTitle = IS_CAJA
+    ? 'Cloud POS - Terminal de Caja (Punto de Venta)'
+    : 'Cloud POS - Panel de Administración';
+
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 768,
     minWidth: 1024,
     minHeight: 700,
-    title: 'Cloud POS - Terminal de Ventas & Administración',
-    icon: path.join(__dirname, 'assets', 'icon.png'),
-    backgroundColor: '#0f172a', // Fondo obsidiana sin parpadeo blanco
-    autoHideMenuBar: true,       // Elimina barras de menú de navegador
+    title: windowTitle,
+    icon: path.join(__dirname, 'assets', iconFile),
+    backgroundColor: '#0f172a',
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
+      partition: IS_CAJA ? 'persist:cloudpos_caja' : 'persist:cloudpos_admin',
     },
-    show: false, // Esperar hasta estar listo para mostrar suavemente
+    show: false,
   });
 
-  // Ocultar menú superior por defecto para apariencia 100% nativa
   Menu.setApplicationMenu(null);
 
-  // URL oficial en vivo en la nube (detecta automáticamente si es Cajero o Administrador)
-  const APP_URL = 'https://cloud-pos-three.vercel.app/login';
+  // Configurar User-Agent identificando si es el ejecutable de CAJA o de ADMIN
+  const defaultUA = mainWindow.webContents.getUserAgent();
+  const modeTag = IS_CAJA ? 'CloudPOS-Caja/1.0' : 'CloudPOS-Admin/1.0';
+  mainWindow.webContents.setUserAgent(`${defaultUA} ${modeTag}`);
 
-  // Limpiar caché HTTP al iniciar para cargar siempre la última versión de la nube
+  const TARGET_URL = IS_CAJA
+    ? 'https://cloud-pos-three.vercel.app/dashboard/pos'
+    : 'https://cloud-pos-three.vercel.app/dashboard';
+
   mainWindow.webContents.session.clearCache().finally(() => {
-    mainWindow.loadURL(APP_URL, {
+    mainWindow.loadURL(TARGET_URL, {
       extraHeaders: 'pragma: no-cache\n',
     });
   });
@@ -54,13 +67,13 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Manejo de error de conexión / Fallback con reconexión automática
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    // Ignorar cancelaciones normales de redirección (-3)
+    if (errorCode === -3) return;
     console.log('Fallo de conexión:', errorDescription);
     mainWindow.loadFile(path.join(__dirname, 'offline.html'));
   });
 
-  // Atajo F11 para alternar Modo Pantalla Completa / Kiosco
   mainWindow.on('focus', () => {
     globalShortcut.register('F11', () => {
       const isFullScreen = mainWindow.isFullScreen();
