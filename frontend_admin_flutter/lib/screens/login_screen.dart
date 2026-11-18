@@ -25,10 +25,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     });
 
     try {
-      await ApiService.login(
+      final res = await ApiService.login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      final role = res['user']?['role']?.toString().toUpperCase();
+      if (role == 'CASHIER') {
+        await ApiService.setToken(null);
+        throw Exception('Acceso denegado: este aplicativo es exclusivo para Administradores.');
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
