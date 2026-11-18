@@ -27,12 +27,16 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [isCajaDesktopApp, setIsCajaDesktopApp] = useState(false);
   const [tenantName, setTenantName] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = api.getToken();
     const { user, tenant } = api.getSession();
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const cajaExe = ua.includes('CloudPOS-Caja');
+    setIsCajaDesktopApp(cajaExe);
 
     if (!token || !user) {
       api.setToken(null);
@@ -45,8 +49,8 @@ export default function DashboardLayout({
       return;
     }
 
-    // Si el usuario es CAJERO, solo tiene permiso de estar en la Terminal de Caja (/dashboard/pos)
-    if (user.role === 'CASHIER' && pathname !== '/dashboard/pos') {
+    // Si es CAJERO o si abrió el ejecutable de CAJA, solo puede estar en la Terminal de Caja (/dashboard/pos)
+    if ((user.role === 'CASHIER' || cajaExe) && pathname !== '/dashboard/pos') {
       router.replace('/dashboard/pos');
       return;
     }
@@ -245,7 +249,7 @@ export default function DashboardLayout({
 
   const allItems = navigationGroups.flatMap((group) => group.items);
   const currentTitle = allItems.find((item) => item.path === pathname)?.name || 'Panel de Control';
-  const isCashier = userRole === 'CASHIER';
+  const isCashier = userRole === 'CASHIER' || isCajaDesktopApp;
 
   return (
     <div className="min-h-screen bg-slate-900/10 flex flex-col md:flex-row text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">

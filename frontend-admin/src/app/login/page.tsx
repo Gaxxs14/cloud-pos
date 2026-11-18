@@ -11,12 +11,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [desktopMode, setDesktopMode] = useState<'CAJA' | 'ADMIN' | 'WEB'>('WEB');
 
   useEffect(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isCajaExe = ua.includes('CloudPOS-Caja');
+    const isAdminExe = ua.includes('CloudPOS-Admin');
+    if (isCajaExe) setDesktopMode('CAJA');
+    else if (isAdminExe) setDesktopMode('ADMIN');
+
     const token = api.getToken();
     const { user } = api.getSession();
     if (token && user) {
-      if (user.role === 'CASHIER') {
+      if (isCajaExe || user.role === 'CASHIER') {
         router.push('/dashboard/pos');
       } else {
         router.push('/dashboard');
@@ -31,11 +38,18 @@ export default function LoginPage() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      
+
+      if (desktopMode === 'ADMIN' && response.user.role === 'CASHIER') {
+        api.setToken(null);
+        setError('Acceso denegado: este ejecutable es exclusivo para Administradores. Usa "Cloud POS - Caja".');
+        setLoading(false);
+        return;
+      }
+
       api.setToken(response.token);
       api.saveSession(response.user, response.tenant);
       
-      if (response.user.role === 'CASHIER') {
+      if (desktopMode === 'CAJA' || response.user.role === 'CASHIER') {
         router.push('/dashboard/pos');
       } else {
         router.push('/dashboard');
@@ -51,7 +65,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 shadow-sm">
         
         <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center mb-3 shadow-sm shadow-indigo-600/10">
+          <div className={`w-12 h-12 text-white rounded-xl flex items-center justify-center mb-3 shadow-sm ${
+            desktopMode === 'CAJA' ? 'bg-emerald-600 shadow-emerald-600/10' : 'bg-indigo-600 shadow-indigo-600/10'
+          }`}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
             </svg>
@@ -59,8 +75,16 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-none">
             Cloud POS
           </h1>
-          <p className="text-slate-450 font-bold text-[10px] uppercase tracking-wider mt-2">
-            Panel de Acceso
+          <p className={`font-black text-[10px] uppercase tracking-wider mt-2 px-2.5 py-0.5 rounded-full ${
+            desktopMode === 'CAJA'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'text-slate-500'
+          }`}>
+            {desktopMode === 'CAJA'
+              ? 'Terminal de Caja — Punto de Venta'
+              : desktopMode === 'ADMIN'
+              ? 'Panel de Administración'
+              : 'Panel de Acceso'}
           </p>
         </div>
 
