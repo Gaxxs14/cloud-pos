@@ -1,0 +1,41 @@
+{
+  "name": "cloud-pos-desktop",
+  "version": "1.0.0",
+  "description": "Cloud POS - Terminal de Ventas y Administración para Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis --x64",
+    "dist:portable": "electron-builder --win portable --x64"
+  },
+  "author": "Cloud POS Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.cloudpos.desktop",
+    "productName": "Cloud POS",
+    "copyright": "Copyright © 2026 Cloud POS",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cloud POS"
+    }
+  }
+}
